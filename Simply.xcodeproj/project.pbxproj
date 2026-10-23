@@ -10,6 +10,11 @@
 		E80000000000000000000001 /* SimplyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E80000000000000000000011 /* SimplyApp.swift */; };
 		E80000000000000000000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E80000000000000000000012 /* ContentView.swift */; };
 		E80000000000000000000003 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E80000000000000000000013 /* Assets.xcassets */; };
+		E80000000000000000000004 /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E80000000000000000000015 /* AuthManager.swift */; };
+		E80000000000000000000005 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = E80000000000000000000016 /* GoogleService-Info.plist */; };
+		FBFBFB0000000000000000A1 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = FBFBFB0000000000000000B1 /* FirebaseAuth */; };
+		FBFBFB0000000000000000A2 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = FBFBFB0000000000000000B2 /* FirebaseFirestore */; };
+		FBFBFB0000000000000000A3 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = FBFBFB0000000000000000B3 /* FirebaseCore */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -18,6 +23,8 @@
 		E80000000000000000000012 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		E80000000000000000000013 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		E80000000000000000000014 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		E80000000000000000000015 /* AuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManager.swift; sourceTree = "<group>"; };
+		E80000000000000000000016 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -25,6 +32,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FBFBFB0000000000000000A1 /* FirebaseAuth in Frameworks */,
+				FBFBFB0000000000000000A2 /* FirebaseFirestore in Frameworks */,
+				FBFBFB0000000000000000A3 /* FirebaseCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -44,8 +54,10 @@
 			children = (
 				E80000000000000000000011 /* SimplyApp.swift */,
 				E80000000000000000000012 /* ContentView.swift */,
+				E80000000000000000000015 /* AuthManager.swift */,
 				E80000000000000000000013 /* Assets.xcassets */,
 				E80000000000000000000014 /* Info.plist */,
+				E80000000000000000000016 /* GoogleService-Info.plist */,
 			);
 			path = Simply;
 			sourceTree = "<group>";
@@ -74,6 +86,11 @@
 			dependencies = (
 			);
 			name = Simply;
+			packageProductDependencies = (
+				FBFBFB0000000000000000B1 /* FirebaseAuth */,
+				FBFBFB0000000000000000B2 /* FirebaseFirestore */,
+				FBFBFB0000000000000000B3 /* FirebaseCore */,
+			);
 			productName = Simply;
 			productReference = E80000000000000000000010 /* Simply.app */;
 			productType = "com.apple.product-type.application";
@@ -101,6 +118,9 @@
 				Base,
 			);
 			mainGroup = E80000000000000000000030;
+			packageReferences = (
+				FBFBFB0000000000000000C1 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+			);
 			productRefGroup = E80000000000000000000032 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -116,6 +136,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				E80000000000000000000003 /* Assets.xcassets in Resources */,
+				E80000000000000000000005 /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -128,6 +149,7 @@
 			files = (
 				E80000000000000000000001 /* SimplyApp.swift in Sources */,
 				E80000000000000000000002 /* ContentView.swift in Sources */,
+				E80000000000000000000004 /* AuthManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -143,7 +165,7 @@
 				CODE_SIGN_IDENTITY = "";
 				CODE_SIGNING_REQUIRED = NO;
 				CODE_SIGNING_ALLOWED = NO;
-				CURRENT_PROJECT_VERSION = 13;
+				CURRENT_PROJECT_VERSION = 14;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Simply/Info.plist;
@@ -152,7 +174,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.2.3;
+				MARKETING_VERSION = 0.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.saturnmoon.simply;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -170,7 +192,7 @@
 				CODE_SIGN_IDENTITY = "";
 				CODE_SIGNING_REQUIRED = NO;
 				CODE_SIGNING_ALLOWED = NO;
-				CURRENT_PROJECT_VERSION = 13;
+				CURRENT_PROJECT_VERSION = 14;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Simply/Info.plist;
@@ -179,7 +201,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.2.3;
+				MARKETING_VERSION = 0.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.saturnmoon.simply;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -274,6 +296,35 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		FBFBFB0000000000000000C1 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 11.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		FBFBFB0000000000000000B1 /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FBFBFB0000000000000000C1 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		FBFBFB0000000000000000B2 /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FBFBFB0000000000000000C1 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+		FBFBFB0000000000000000B3 /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FBFBFB0000000000000000C1 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = E80000000000000000000000 /* Project object */;
 }

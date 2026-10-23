@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import FirebaseCore
 
 // Fix: Riabilita il gesto swipe-back anche con back button nascosta
 extension UINavigationController: @retroactive UIGestureRecognizerDelegate {
@@ -15,6 +16,10 @@ extension UINavigationController: @retroactive UIGestureRecognizerDelegate {
 
 @main
 struct SimplyApp: App {
+    init() {
+        FirebaseApp.configure()
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView()

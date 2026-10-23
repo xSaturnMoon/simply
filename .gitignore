@@ -8,3 +8,6 @@ xcuserdata/
 # OS
 .DS_Store
 Thumbs.db
+
+# Firebase - NON committare! Usa GitHub Secrets per la CI
+Simply/GoogleService-Info.plist

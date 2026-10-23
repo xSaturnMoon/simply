@@ -3,11 +3,20 @@ import SwiftUI
 // MARK: - Root
 
 struct ContentView: View {
+    @State private var auth = AuthManager.shared
+
     var body: some View {
-        NavigationStack {
-            LandingView()
-                .toolbarVisibility(.hidden, for: .navigationBar)
+        Group {
+            if auth.currentUser != nil {
+                MainAppView()
+            } else {
+                NavigationStack {
+                    LandingView()
+                        .toolbarVisibility(.hidden, for: .navigationBar)
+                }
+            }
         }
+        .animation(.easeInOut(duration: 0.35), value: auth.currentUser == nil)
     }
 }
 
@@ -83,7 +92,8 @@ struct LandingView: View {
 // MARK: - Register
 
 struct RegisterView: View {
-    @State private var name = ""
+    @State private var auth = AuthManager.shared
+    @State private var username = ""
     @State private var password = ""
     @State private var confirmPassword = ""
     @State private var showPassword = false
@@ -112,7 +122,7 @@ struct RegisterView: View {
                 }
                 .padding(.bottom, 32)
 
-                // Logo piccolo + titolo in stile landing
+                // Logo piccolo + titolo
                 VStack(spacing: 14) {
                     Image("AppLogo")
                         .resizable()
@@ -132,17 +142,41 @@ struct RegisterView: View {
 
                 // Campi
                 VStack(spacing: 12) {
-                    AuthField(icon: "person", placeholder: "Nome utente", text: $name)
+                    AuthField(icon: "person", placeholder: "Nome utente", text: $username)
                     AuthSecureField(placeholder: "Password", text: $password, show: $showPassword)
                     AuthSecureField(placeholder: "Conferma Password", text: $confirmPassword, show: $showConfirm)
                 }
-                .padding(.bottom, 24)
+                .padding(.bottom, 16)
+
+                // Messaggio errore
+                if let msg = auth.errorMessage {
+                    Text(msg)
+                        .font(.footnote)
+                        .foregroundStyle(.red.opacity(0.9))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 4)
+                        .padding(.bottom, 12)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                }
 
                 // CTA
-                Button {} label: {
-                    AuthPill(label: "Crea Account", style: .primary)
+                Button {
+                    Task {
+                        await auth.register(
+                            username: username,
+                            password: password,
+                            confirmPassword: confirmPassword
+                        )
+                    }
+                } label: {
+                    if auth.isLoading {
+                        AuthPill(label: "", style: .primary, isLoading: true)
+                    } else {
+                        AuthPill(label: "Crea Account", style: .primary)
+                    }
                 }
                 .contentShape(Capsule())
+                .disabled(auth.isLoading)
 
                 Spacer()
             }
@@ -151,13 +185,15 @@ struct RegisterView: View {
         }
         .navigationBarBackButtonHidden(true)
         .toolbarVisibility(.hidden, for: .navigationBar)
+        .animation(.easeInOut(duration: 0.2), value: auth.errorMessage)
     }
 }
 
 // MARK: - Login
 
 struct LoginView: View {
-    @State private var name = ""
+    @State private var auth = AuthManager.shared
+    @State private var username = ""
     @State private var password = ""
     @State private var showPassword = false
     @Environment(\.dismiss) private var dismiss
@@ -184,7 +220,7 @@ struct LoginView: View {
                 }
                 .padding(.bottom, 32)
 
-                // Logo piccolo + titolo in stile landing
+                // Logo piccolo + titolo
                 VStack(spacing: 14) {
                     Image("AppLogo")
                         .resizable()
@@ -204,16 +240,36 @@ struct LoginView: View {
 
                 // Campi
                 VStack(spacing: 12) {
-                    AuthField(icon: "person", placeholder: "Nome utente", text: $name)
+                    AuthField(icon: "person", placeholder: "Nome utente", text: $username)
                     AuthSecureField(placeholder: "Password", text: $password, show: $showPassword)
                 }
-                .padding(.bottom, 24)
+                .padding(.bottom, 16)
+
+                // Messaggio errore
+                if let msg = auth.errorMessage {
+                    Text(msg)
+                        .font(.footnote)
+                        .foregroundStyle(.red.opacity(0.9))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 4)
+                        .padding(.bottom, 12)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                }
 
                 // CTA
-                Button {} label: {
-                    AuthPill(label: "Accedi", style: .primary)
+                Button {
+                    Task {
+                        await auth.login(username: username, password: password)
+                    }
+                } label: {
+                    if auth.isLoading {
+                        AuthPill(label: "", style: .primary, isLoading: true)
+                    } else {
+                        AuthPill(label: "Accedi", style: .primary)
+                    }
                 }
                 .contentShape(Capsule())
+                .disabled(auth.isLoading)
 
                 Spacer()
             }
@@ -222,6 +278,86 @@ struct LoginView: View {
         }
         .navigationBarBackButtonHidden(true)
         .toolbarVisibility(.hidden, for: .navigationBar)
+        .animation(.easeInOut(duration: 0.2), value: auth.errorMessage)
+    }
+}
+
+// MARK: - Main App (post-login)
+
+struct MainAppView: View {
+    @State private var auth = AuthManager.shared
+    private let bg = Color(red: 28/255, green: 28/255, blue: 30/255)
+
+    var body: some View {
+        TabView {
+            Tab("Lista", systemImage: "cart") {
+                ShoppingListView()
+            }
+            Tab("Calendario", systemImage: "calendar") {
+                CalendarView()
+            }
+            Tab("Profilo", systemImage: "person.circle") {
+                ProfileView()
+            }
+        }
+    }
+}
+
+// MARK: - Placeholder views (da implementare)
+
+struct ShoppingListView: View {
+    private let bg = Color(red: 28/255, green: 28/255, blue: 30/255)
+    var body: some View {
+        ZStack {
+            bg.ignoresSafeArea()
+            Text("Lista della Spesa")
+                .foregroundStyle(.white)
+        }
+    }
+}
+
+struct CalendarView: View {
+    private let bg = Color(red: 28/255, green: 28/255, blue: 30/255)
+    var body: some View {
+        ZStack {
+            bg.ignoresSafeArea()
+            Text("Calendario")
+                .foregroundStyle(.white)
+        }
+    }
+}
+
+struct ProfileView: View {
+    @State private var auth = AuthManager.shared
+    private let bg = Color(red: 28/255, green: 28/255, blue: 30/255)
+
+    var body: some View {
+        ZStack {
+            bg.ignoresSafeArea()
+            VStack(spacing: 24) {
+                Image("AppLogo")
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 72, height: 72)
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+
+                Text(auth.currentUser?.email?
+                    .replacingOccurrences(of: "@simply.app", with: "") ?? "")
+                    .font(.title2.bold())
+                    .foregroundStyle(.white)
+
+                Button {
+                    auth.logout()
+                } label: {
+                    Text("Esci")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 160, height: 48)
+                        .background(Capsule().stroke(Color.white.opacity(0.25), lineWidth: 1))
+                }
+                .contentShape(Capsule())
+            }
+        }
     }
 }
 
@@ -232,22 +368,30 @@ enum AuthPillStyle { case primary, outlined }
 struct AuthPill: View {
     let label: String
     let style: AuthPillStyle
+    var isLoading: Bool = false
 
     var body: some View {
-        Text(label)
-            .font(.system(size: 16, weight: .semibold))
-            .foregroundStyle(style == .primary ? .black : .white)
-            .frame(maxWidth: .infinity)
-            .frame(height: 54)
-            .background {
-                switch style {
-                case .primary:
-                    Capsule().fill(Color.white)
-                case .outlined:
-                    Capsule().stroke(Color.white.opacity(0.25), lineWidth: 1)
-                }
+        Group {
+            if isLoading {
+                ProgressView()
+                    .tint(style == .primary ? .black : .white)
+            } else {
+                Text(label)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(style == .primary ? .black : .white)
             }
-            .contentShape(Capsule())
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 54)
+        .background {
+            switch style {
+            case .primary:
+                Capsule().fill(Color.white)
+            case .outlined:
+                Capsule().stroke(Color.white.opacity(0.25), lineWidth: 1)
+            }
+        }
+        .contentShape(Capsule())
     }
 }
 
