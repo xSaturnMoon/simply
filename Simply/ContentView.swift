@@ -1,5 +1,4 @@
 import SwiftUI
-import AuthenticationServices
 
 // MARK: - Root
 
@@ -25,15 +24,15 @@ struct LandingView: View {
                 Spacer()
 
                 // Logo + Nome
-                VStack(spacing: 18) {
+                VStack(spacing: 20) {
                     Image("AppLogo")
                         .resizable()
                         .scaledToFill()
-                        .frame(width: 86, height: 86)
-                        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                        .frame(width: 130, height: 130)
+                        .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
 
                     Text("Simply")
-                        .font(.title.bold())
+                        .font(.system(size: 34, weight: .bold))
                         .foregroundStyle(.white)
                 }
 
@@ -57,24 +56,21 @@ struct LandingView: View {
                         .frame(height: 1)
                         .padding(.vertical, 4)
 
-                    // Continua con Apple
-                    SignInWithAppleButton(.continue) { request in
-                        request.requestedScopes = [.fullName, .email]
-                    } onCompletion: { result in
-                        switch result {
-                        case .success:
-                            break // Gestione futura
-                        case .failure:
-                            break
+                    // Continua con Apple (custom pill coerente col design)
+                    Button {} label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: "apple.logo")
+                                .font(.system(size: 17, weight: .medium))
+                                .offset(y: -1)
+                            Text("Continua con Apple")
+                                .font(.system(size: 16, weight: .semibold))
                         }
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 54)
+                        .background(Capsule().stroke(Color.white.opacity(0.25), lineWidth: 1))
                     }
-                    .signInWithAppleButtonStyle(.white)
-                    .frame(height: 54)
-                    .clipShape(Capsule())
-                    .overlay(
-                        Capsule()
-                            .stroke(Color.white.opacity(0.25), lineWidth: 1)
-                    )
+                    .contentShape(Capsule())
                 }
                 .padding(.horizontal, 28)
 
