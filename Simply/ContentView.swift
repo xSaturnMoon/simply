@@ -1,15 +1,104 @@
 import SwiftUI
 
-// MARK: - Content View
+// MARK: - Root
 
 struct ContentView: View {
     var body: some View {
-        TabView {
-            Tab("Registrati", systemImage: "person.badge.plus") {
-                RegisterView()
+        NavigationStack {
+            LandingView()
+        }
+        .navigationBarHidden(true)
+    }
+}
+
+// MARK: - Landing
+
+struct LandingView: View {
+    private let bg = Color(red: 28/255, green: 28/255, blue: 30/255)
+
+    var body: some View {
+        ZStack {
+            bg.ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                Spacer()
+
+                // Logo + Nome App
+                VStack(spacing: 20) {
+                    Image("AppLogo")
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 90, height: 90)
+                        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+
+                    Text("Simply")
+                        .font(.title.bold())
+                        .foregroundStyle(.white)
+                }
+
+                Spacer()
+                Spacer()
+
+                // Pulsanti di accesso
+                VStack(spacing: 12) {
+                    // Registrati
+                    NavigationLink(destination: RegisterView()) {
+                        LandingPill(label: "Registrati con username", style: .primary)
+                    }
+                    .buttonStyle(.plain)
+
+                    // Accedi
+                    NavigationLink(destination: LoginView()) {
+                        LandingPill(label: "Accedi", style: .outlined)
+                    }
+                    .buttonStyle(.plain)
+
+                    Divider()
+                        .overlay(Color.white.opacity(0.12))
+                        .padding(.vertical, 4)
+
+                    // Continue with Apple
+                    Button {} label: {
+                        LandingPill(label: "Continue with Apple", style: .apple)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 28)
+
+                Spacer()
             }
-            Tab("Accedi", systemImage: "arrow.right.circle.fill") {
-                LoginView()
+        }
+        .navigationBarHidden(true)
+    }
+}
+
+// MARK: - Landing Pill Button
+
+enum LandingStyle { case primary, outlined, apple }
+
+struct LandingPill: View {
+    let label: String
+    let style: LandingStyle
+
+    var body: some View {
+        HStack(spacing: 10) {
+            if style == .apple {
+                Image(systemName: "apple.logo")
+                    .font(.system(size: 18, weight: .medium))
+            }
+            Text(label)
+                .font(.system(size: 16, weight: .semibold))
+        }
+        .foregroundStyle(style == .primary ? .black : .white)
+        .frame(maxWidth: .infinity)
+        .frame(height: 54)
+        .background {
+            switch style {
+            case .primary:
+                Capsule().fill(.white)
+            case .outlined, .apple:
+                Capsule()
+                    .stroke(.white.opacity(0.25), lineWidth: 1)
             }
         }
     }
@@ -23,6 +112,7 @@ struct RegisterView: View {
     @State private var confirmPassword = ""
     @State private var showPassword = false
     @State private var showConfirm = false
+    @Environment(\.dismiss) private var dismiss
 
     private let bg = Color(red: 28/255, green: 28/255, blue: 30/255)
 
@@ -31,12 +121,22 @@ struct RegisterView: View {
             bg.ignoresSafeArea()
 
             VStack(alignment: .leading, spacing: 0) {
+                // Back
+                Button { dismiss() } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundStyle(.white)
+                        .padding(12)
+                        .glassEffect(.regular, in: Circle())
+                }
+                .padding(.bottom, 24)
+
                 // Header
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Crea Account")
                         .font(.largeTitle.bold())
                         .foregroundStyle(.white)
-                    Text("Benvenuto in Simply")
+                    Text("Inserisci i tuoi dati per iniziare")
                         .font(.subheadline)
                         .foregroundStyle(.white.opacity(0.45))
                 }
@@ -44,18 +144,30 @@ struct RegisterView: View {
 
                 // Campi
                 VStack(spacing: 12) {
-                    AuthField(icon: "person", placeholder: "Nome", text: $name)
+                    AuthField(icon: "person", placeholder: "Nome utente", text: $name)
                     AuthSecureField(placeholder: "Password", text: $password, show: $showPassword)
                     AuthSecureField(placeholder: "Conferma Password", text: $confirmPassword, show: $showConfirm)
                 }
-                .padding(.bottom, 24)
+                .padding(.bottom, 28)
 
-                // Pulsante
-                AuthButton(label: "Registrati") {}
+                // Bottone
+                Button {} label: {
+                    Text("Crea Account")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(.black)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 54)
+                        .background(.white)
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+
+                Spacer()
             }
             .padding(.horizontal, 28)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+            .padding(.top, 20)
         }
+        .navigationBarHidden(true)
     }
 }
 
@@ -65,6 +177,7 @@ struct LoginView: View {
     @State private var name = ""
     @State private var password = ""
     @State private var showPassword = false
+    @Environment(\.dismiss) private var dismiss
 
     private let bg = Color(red: 28/255, green: 28/255, blue: 30/255)
 
@@ -73,12 +186,22 @@ struct LoginView: View {
             bg.ignoresSafeArea()
 
             VStack(alignment: .leading, spacing: 0) {
+                // Back
+                Button { dismiss() } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundStyle(.white)
+                        .padding(12)
+                        .glassEffect(.regular, in: Circle())
+                }
+                .padding(.bottom, 24)
+
                 // Header
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Bentornato")
                         .font(.largeTitle.bold())
                         .foregroundStyle(.white)
-                    Text("Accedi al tuo account")
+                    Text("Accedi al tuo account Simply")
                         .font(.subheadline)
                         .foregroundStyle(.white.opacity(0.45))
                 }
@@ -86,21 +209,33 @@ struct LoginView: View {
 
                 // Campi
                 VStack(spacing: 12) {
-                    AuthField(icon: "person", placeholder: "Nome", text: $name)
+                    AuthField(icon: "person", placeholder: "Nome utente", text: $name)
                     AuthSecureField(placeholder: "Password", text: $password, show: $showPassword)
                 }
-                .padding(.bottom, 24)
+                .padding(.bottom, 28)
 
-                // Pulsante
-                AuthButton(label: "Accedi") {}
+                // Bottone
+                Button {} label: {
+                    Text("Accedi")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(.black)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 54)
+                        .background(.white)
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+
+                Spacer()
             }
             .padding(.horizontal, 28)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+            .padding(.top, 20)
         }
+        .navigationBarHidden(true)
     }
 }
 
-// MARK: - Componenti Condivisi
+// MARK: - Componenti condivisi
 
 struct AuthField: View {
     let icon: String
@@ -110,7 +245,7 @@ struct AuthField: View {
     var body: some View {
         HStack(spacing: 14) {
             Image(systemName: icon)
-                .foregroundStyle(.white.opacity(0.55))
+                .foregroundStyle(.white.opacity(0.5))
                 .frame(width: 18)
             TextField(
                 "",
@@ -135,7 +270,7 @@ struct AuthSecureField: View {
     var body: some View {
         HStack(spacing: 14) {
             Image(systemName: "lock")
-                .foregroundStyle(.white.opacity(0.55))
+                .foregroundStyle(.white.opacity(0.5))
                 .frame(width: 18)
             Group {
                 if show {
@@ -171,26 +306,6 @@ struct AuthSecureField: View {
     }
 }
 
-struct AuthButton: View {
-    let label: String
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Text(label)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(.black)
-                .frame(maxWidth: .infinity)
-                .frame(height: 54)
-                .background(.white)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        }
-        .buttonStyle(.plain)
-    }
-}
-
 // MARK: - Preview
 
-#Preview {
-    ContentView()
-}
+#Preview { ContentView() }
