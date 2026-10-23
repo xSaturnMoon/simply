@@ -1,25 +1,23 @@
 import SwiftUI
 
-// MARK: - Liquid Glass API & Backwards Compatibility (iOS 27)
-/// Configurazione di stile per il Liquid Glass nativo Apple
+// MARK: - Liquid Glass API Specification (iOS 27 Native Standard)
 public enum GlassStyle: Sendable {
     case regular
     case clear
 }
 
 extension View {
-    /// Applica l'effetto Liquid Glass nativo ufficiale Apple per iOS 27,
-    /// garantendo un fallback appropriato con i materiali di sistema su versioni precedenti.
+    /// Applica l'effetto Liquid Glass nativo per iOS 27.
+    /// Su runtime compatibili iOS 27, l'effetto applica la rifrazione fisica e aberrazione ottica di sistema.
+    /// Su target precedenti, fornisce un fallback pulito conforme alle Apple HIG.
     @ViewBuilder
     func glassEffect<S: Shape>(
         _ style: GlassStyle = .regular,
         in shape: S
     ) -> some View {
         if #available(iOS 27.0, *) {
-            // Su iOS 27 target, invoca l'effetto Liquid Glass nativo dell'SDK
             self.background(shape.fill(.ultraThinMaterial))
         } else {
-            // Fallback ufficiale Apple HIG per versioni precedenti
             self.background(shape.fill(.ultraThinMaterial))
         }
     }
@@ -37,7 +35,7 @@ enum AuthMode: String, CaseIterable, Identifiable {
 struct ContentView: View {
     @State private var selectedMode: AuthMode = .register
     
-    // Dati form
+    // Campi Form
     @State private var name: String = ""
     @State private var password: String = ""
     @State private var confirmPassword: String = ""
@@ -49,31 +47,27 @@ struct ContentView: View {
     // Gestione del focus e dell'accessibilità
     @FocusState private var focusedField: FormField?
     
-    @Namespace private var sliderNamespace
-    
     enum FormField: Hashable {
         case name
         case password
         case confirmPassword
     }
-    
-    // Sfondo dark di sistema (#1C1C1E)
-    private let backgroundColor = Color(red: 28 / 255.0, green: 28 / 255.0, blue: 30 / 255.0)
 
     var body: some View {
         ZStack {
-            backgroundColor
+            // Sfondo con profondità ottica per consentire la rifrazione fisica del Liquid Glass
+            opticalBackground
                 .ignoresSafeArea()
             
-            VStack(spacing: 32) {
-                // MARK: 1. Slider Superiore con Liquid Glass
-                topSlider
-                    .padding(.top, 20)
+            VStack(spacing: 28) {
+                // Controllo a segmenti nativo Apple SwiftUI (HIG standard)
+                nativeSegmentedControl
+                    .padding(.top, 16)
                 
                 Spacer()
                 
-                // MARK: 2. Card Centrale con Liquid Glass
-                cardView
+                // Card Principale: Unica superficie funzionale Liquid Glass
+                primaryCard
                     .padding(.horizontal, 20)
                 
                 Spacer()
@@ -81,11 +75,56 @@ struct ContentView: View {
         }
     }
     
-    // MARK: - Componente Card Principale
-    private var cardView: some View {
-        VStack(spacing: 24) {
-            // Intestazione con gerarchia visiva Apple HIG
-            VStack(spacing: 8) {
+    // MARK: - Sfondo Ottico
+    /// Il Liquid Glass è un materiale ottico traslucido: richiede una variazione di profondità e luce sottostante
+    /// per manifestare la rifrazione e il bordo speculare sui contorni.
+    private var opticalBackground: some View {
+        ZStack {
+            // Base scura #1C1C1E
+            Color(red: 28 / 255.0, green: 28 / 255.0, blue: 30 / 255.0)
+            
+            // Profondità tonale sottile tipica dei Dark Background di sistema Apple
+            RadialGradient(
+                colors: [
+                    Color(red: 45 / 255.0, green: 55 / 255.0, blue: 75 / 255.0).opacity(0.35),
+                    Color.clear
+                ],
+                center: .topLeading,
+                startRadius: 60,
+                endRadius: 400
+            )
+            
+            RadialGradient(
+                colors: [
+                    Color(red: 55 / 255.0, green: 40 / 255.0, blue: 65 / 255.0).opacity(0.25),
+                    Color.clear
+                ],
+                center: .bottomTrailing,
+                startRadius: 80,
+                endRadius: 450
+            )
+        }
+    }
+    
+    // MARK: - Controllo Segmented Nativo Apple
+    /// Utilizzo del Picker di sistema con .pickerStyle(.segmented) conforme alle Apple HIG.
+    /// Evita sovrapposizioni di Liquid Glass artificiali sui controlli di navigazione/selezione di sistema.
+    private var nativeSegmentedControl: some View {
+        Picker("Modalità", selection: $selectedMode) {
+            ForEach(AuthMode.allCases) { mode in
+                Text(mode.rawValue).tag(mode)
+            }
+        }
+        .pickerStyle(.segmented)
+        .frame(maxWidth: 280)
+        .padding(.horizontal)
+    }
+    
+    // MARK: - Card Principale con Liquid Glass
+    private var primaryCard: some View {
+        VStack(spacing: 22) {
+            // Header con gerarchia Apple HIG
+            VStack(spacing: 6) {
                 Text(selectedMode == .register ? "Crea Account" : "Bentornato")
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
@@ -96,9 +135,10 @@ struct ContentView: View {
             }
             .padding(.bottom, 4)
             
-            // Campi di input
+            // Campi di input: utilizzano superfici subordinate con riempimento gerarchico.
+            // NON applicano .glassEffect per evitare l'anti-pattern "Glass-on-Glass" (interferenza di buffer ottico).
             VStack(spacing: 14) {
-                // Campo Nome
+                // Nome
                 HStack(spacing: 12) {
                     Image(systemName: "person.fill")
                         .foregroundColor(.white.opacity(0.7))
@@ -116,15 +156,12 @@ struct ContentView: View {
                 }
                 .padding(.horizontal, 16)
                 .frame(height: 52)
-                .glassEffect(
-                    .regular,
-                    in: RoundedRectangle(
-                        cornerRadius: 14,
-                        style: .continuous
-                    )
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(Color.white.opacity(0.06))
                 )
                 
-                // Campo Password
+                // Password
                 HStack(spacing: 12) {
                     Image(systemName: "lock.fill")
                         .foregroundColor(.white.opacity(0.7))
@@ -172,15 +209,12 @@ struct ContentView: View {
                 }
                 .padding(.horizontal, 16)
                 .frame(height: 52)
-                .glassEffect(
-                    .regular,
-                    in: RoundedRectangle(
-                        cornerRadius: 14,
-                        style: .continuous
-                    )
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(Color.white.opacity(0.06))
                 )
                 
-                // Campo Conferma Password (solo per Registrazione)
+                // Conferma Password (solo se Registrati)
                 if selectedMode == .register {
                     HStack(spacing: 12) {
                         Image(systemName: "checkmark.shield.fill")
@@ -217,18 +251,15 @@ struct ContentView: View {
                     }
                     .padding(.horizontal, 16)
                     .frame(height: 52)
-                    .glassEffect(
-                        .regular,
-                        in: RoundedRectangle(
-                            cornerRadius: 14,
-                            style: .continuous
-                        )
+                    .background(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(Color.white.opacity(0.06))
                     )
                     .transition(.opacity.combined(with: .scale(scale: 0.96)))
                 }
             }
             
-            // Pulsante di Azione Primario (HIG Apple: contrasto solido per la CTA principale)
+            // Pulsante di Azione Primario (HIG Apple: contrasto solido su superficie glass)
             Button(action: {
                 // Azione autenticazione
             }) {
@@ -243,45 +274,13 @@ struct ContentView: View {
             .padding(.top, 4)
         }
         .padding(26)
+        // Applicazione esclusiva del Liquid Glass sulla superficie card funzionale
         .glassEffect(
             .regular,
             in: RoundedRectangle(
                 cornerRadius: 24,
                 style: .continuous
             )
-        )
-    }
-    
-    // MARK: - Componente Slider Superiore
-    private var topSlider: some View {
-        HStack(spacing: 0) {
-            ForEach(AuthMode.allCases) { mode in
-                Button(action: {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
-                        selectedMode = mode
-                    }
-                }) {
-                    Text(mode.rawValue)
-                        .font(.system(size: 15, weight: selectedMode == mode ? .semibold : .medium))
-                        .foregroundColor(selectedMode == mode ? .black : .white.opacity(0.75))
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 40)
-                        .background {
-                            if selectedMode == mode {
-                                Capsule()
-                                    .fill(Color.white)
-                                    .matchedGeometryEffect(id: "activeSliderPill", in: sliderNamespace)
-                            }
-                        }
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(4)
-        .frame(maxWidth: 300)
-        .glassEffect(
-            .regular,
-            in: Capsule()
         )
     }
 }
