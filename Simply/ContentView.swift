@@ -1,4 +1,5 @@
 import SwiftUI
+import AuthenticationServices
 
 // MARK: - Root
 
@@ -6,8 +7,8 @@ struct ContentView: View {
     var body: some View {
         NavigationStack {
             LandingView()
+                .toolbarVisibility(.hidden, for: .navigationBar)
         }
-        .navigationBarHidden(true)
     }
 }
 
@@ -23,12 +24,12 @@ struct LandingView: View {
             VStack(spacing: 0) {
                 Spacer()
 
-                // Logo + Nome App
-                VStack(spacing: 20) {
+                // Logo + Nome
+                VStack(spacing: 18) {
                     Image("AppLogo")
                         .resizable()
                         .scaledToFill()
-                        .frame(width: 90, height: 90)
+                        .frame(width: 86, height: 86)
                         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
 
                     Text("Simply")
@@ -39,72 +40,51 @@ struct LandingView: View {
                 Spacer()
                 Spacer()
 
-                // Pulsanti di accesso
+                // Pulsanti
                 VStack(spacing: 12) {
-                    // Registrati
                     NavigationLink(destination: RegisterView()) {
-                        LandingPill(label: "Registrati con username", style: .primary)
+                        AuthPill(label: "Registrati con username", style: .primary)
                     }
-                    .buttonStyle(.plain)
+                    .contentShape(Capsule())
 
-                    // Accedi
                     NavigationLink(destination: LoginView()) {
-                        LandingPill(label: "Accedi", style: .outlined)
+                        AuthPill(label: "Accedi", style: .outlined)
                     }
-                    .buttonStyle(.plain)
+                    .contentShape(Capsule())
 
-                    Divider()
-                        .overlay(Color.white.opacity(0.12))
+                    Rectangle()
+                        .fill(Color.white.opacity(0.1))
+                        .frame(height: 1)
                         .padding(.vertical, 4)
 
-                    // Continue with Apple
-                    Button {} label: {
-                        LandingPill(label: "Continue with Apple", style: .apple)
+                    // Continua con Apple
+                    SignInWithAppleButton(.continue) { request in
+                        request.requestedScopes = [.fullName, .email]
+                    } onCompletion: { result in
+                        switch result {
+                        case .success:
+                            break // Gestione futura
+                        case .failure:
+                            break
+                        }
                     }
-                    .buttonStyle(.plain)
+                    .signInWithAppleButtonStyle(.white)
+                    .frame(height: 54)
+                    .clipShape(Capsule())
+                    .overlay(
+                        Capsule()
+                            .stroke(Color.white.opacity(0.25), lineWidth: 1)
+                    )
                 }
                 .padding(.horizontal, 28)
 
                 Spacer()
             }
         }
-        .navigationBarHidden(true)
     }
 }
 
-// MARK: - Landing Pill Button
-
-enum LandingStyle { case primary, outlined, apple }
-
-struct LandingPill: View {
-    let label: String
-    let style: LandingStyle
-
-    var body: some View {
-        HStack(spacing: 10) {
-            if style == .apple {
-                Image(systemName: "apple.logo")
-                    .font(.system(size: 18, weight: .medium))
-            }
-            Text(label)
-                .font(.system(size: 16, weight: .semibold))
-        }
-        .foregroundStyle(style == .primary ? .black : .white)
-        .frame(maxWidth: .infinity)
-        .frame(height: 54)
-        .background {
-            switch style {
-            case .primary:
-                Capsule().fill(.white)
-            case .outlined, .apple:
-                Capsule()
-                    .stroke(.white.opacity(0.25), lineWidth: 1)
-            }
-        }
-    }
-}
-
-// MARK: - Register View
+// MARK: - Register
 
 struct RegisterView: View {
     @State private var name = ""
@@ -120,27 +100,39 @@ struct RegisterView: View {
         ZStack {
             bg.ignoresSafeArea()
 
-            VStack(alignment: .leading, spacing: 0) {
-                // Back
-                Button { dismiss() } label: {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundStyle(.white)
-                        .padding(12)
-                        .glassEffect(.regular, in: Circle())
+            VStack(spacing: 0) {
+                // Header con back
+                HStack {
+                    Button { dismiss() } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 38, height: 38)
+                            .glassEffect(.regular, in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .contentShape(Circle())
+                    Spacer()
                 }
-                .padding(.bottom, 24)
+                .padding(.bottom, 32)
 
-                // Header
-                VStack(alignment: .leading, spacing: 6) {
+                // Logo piccolo + titolo in stile landing
+                VStack(spacing: 14) {
+                    Image("AppLogo")
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 52, height: 52)
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+
                     Text("Crea Account")
-                        .font(.largeTitle.bold())
+                        .font(.title.bold())
                         .foregroundStyle(.white)
-                    Text("Inserisci i tuoi dati per iniziare")
+
+                    Text("Benvenuto in Simply")
                         .font(.subheadline)
                         .foregroundStyle(.white.opacity(0.45))
                 }
-                .padding(.bottom, 36)
+                .padding(.bottom, 40)
 
                 // Campi
                 VStack(spacing: 12) {
@@ -148,30 +140,25 @@ struct RegisterView: View {
                     AuthSecureField(placeholder: "Password", text: $password, show: $showPassword)
                     AuthSecureField(placeholder: "Conferma Password", text: $confirmPassword, show: $showConfirm)
                 }
-                .padding(.bottom, 28)
+                .padding(.bottom, 24)
 
-                // Bottone
+                // CTA
                 Button {} label: {
-                    Text("Crea Account")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(.black)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 54)
-                        .background(.white)
-                        .clipShape(Capsule())
+                    AuthPill(label: "Crea Account", style: .primary)
                 }
-                .buttonStyle(.plain)
+                .contentShape(Capsule())
 
                 Spacer()
             }
             .padding(.horizontal, 28)
             .padding(.top, 20)
         }
-        .navigationBarHidden(true)
+        .navigationBarBackButtonHidden(true)
+        .toolbarVisibility(.hidden, for: .navigationBar)
     }
 }
 
-// MARK: - Login View
+// MARK: - Login
 
 struct LoginView: View {
     @State private var name = ""
@@ -185,57 +172,90 @@ struct LoginView: View {
         ZStack {
             bg.ignoresSafeArea()
 
-            VStack(alignment: .leading, spacing: 0) {
-                // Back
-                Button { dismiss() } label: {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundStyle(.white)
-                        .padding(12)
-                        .glassEffect(.regular, in: Circle())
+            VStack(spacing: 0) {
+                // Header con back
+                HStack {
+                    Button { dismiss() } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 38, height: 38)
+                            .glassEffect(.regular, in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .contentShape(Circle())
+                    Spacer()
                 }
-                .padding(.bottom, 24)
+                .padding(.bottom, 32)
 
-                // Header
-                VStack(alignment: .leading, spacing: 6) {
+                // Logo piccolo + titolo in stile landing
+                VStack(spacing: 14) {
+                    Image("AppLogo")
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 52, height: 52)
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+
                     Text("Bentornato")
-                        .font(.largeTitle.bold())
+                        .font(.title.bold())
                         .foregroundStyle(.white)
+
                     Text("Accedi al tuo account Simply")
                         .font(.subheadline)
                         .foregroundStyle(.white.opacity(0.45))
                 }
-                .padding(.bottom, 36)
+                .padding(.bottom, 40)
 
                 // Campi
                 VStack(spacing: 12) {
                     AuthField(icon: "person", placeholder: "Nome utente", text: $name)
                     AuthSecureField(placeholder: "Password", text: $password, show: $showPassword)
                 }
-                .padding(.bottom, 28)
+                .padding(.bottom, 24)
 
-                // Bottone
+                // CTA
                 Button {} label: {
-                    Text("Accedi")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(.black)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 54)
-                        .background(.white)
-                        .clipShape(Capsule())
+                    AuthPill(label: "Accedi", style: .primary)
                 }
-                .buttonStyle(.plain)
+                .contentShape(Capsule())
 
                 Spacer()
             }
             .padding(.horizontal, 28)
             .padding(.top, 20)
         }
-        .navigationBarHidden(true)
+        .navigationBarBackButtonHidden(true)
+        .toolbarVisibility(.hidden, for: .navigationBar)
     }
 }
 
-// MARK: - Componenti condivisi
+// MARK: - AuthPill (bottone riutilizzabile)
+
+enum AuthPillStyle { case primary, outlined }
+
+struct AuthPill: View {
+    let label: String
+    let style: AuthPillStyle
+
+    var body: some View {
+        Text(label)
+            .font(.system(size: 16, weight: .semibold))
+            .foregroundStyle(style == .primary ? .black : .white)
+            .frame(maxWidth: .infinity)
+            .frame(height: 54)
+            .background {
+                switch style {
+                case .primary:
+                    Capsule().fill(Color.white)
+                case .outlined:
+                    Capsule().stroke(Color.white.opacity(0.25), lineWidth: 1)
+                }
+            }
+            .contentShape(Capsule())
+    }
+}
+
+// MARK: - AuthField
 
 struct AuthField: View {
     let icon: String
@@ -261,6 +281,8 @@ struct AuthField: View {
         .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
+
+// MARK: - AuthSecureField
 
 struct AuthSecureField: View {
     let placeholder: String
@@ -305,7 +327,5 @@ struct AuthSecureField: View {
         .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
-
-// MARK: - Preview
 
 #Preview { ContentView() }
