@@ -8,7 +8,7 @@ enum AuthMode: String, CaseIterable {
 struct ContentView: View {
     @State private var selectedMode: AuthMode = .register
     
-    // Campi per il modulo di test
+    // Dati form
     @State private var name: String = ""
     @State private var password: String = ""
     @State private var confirmPassword: String = ""
@@ -17,68 +17,75 @@ struct ContentView: View {
     @State private var showPassword: Bool = false
     @State private var showConfirmPassword: Bool = false
     
-    // Colori & Stile Apple
-    private let backgroundColor = Color(red: 28 / 255.0, green: 28 / 255.0, blue: 30 / 255.0) // #1C1C1E
-    private let fieldBackground = Color.white.opacity(0.08)
+    // Colore base richiesto #1C1C1E
+    private let baseBackground = Color(red: 28 / 255.0, green: 28 / 255.0, blue: 30 / 255.0)
 
     var body: some View {
         ZStack {
-            backgroundColor
+            // Sfondo #1C1C1E con profondità di luce per far risaltare il vetro ottico Apple
+            baseBackground
                 .ignoresSafeArea()
             
-            VStack(spacing: 24) {
-                // Slider in alto: Registrati | Accedi
-                topSlider
-                    .padding(.top, 20)
+            // Sfere di luce ambientale Apple che filtrano attraverso il materiale Liquid Glass
+            ambientLighting
+                .ignoresSafeArea()
+            
+            VStack(spacing: 28) {
+                // MARK: - Slider Superiore Liquid Glass
+                glassSlider
+                    .padding(.top, 16)
                 
                 Spacer()
                 
-                // Card centrale con effetto Liquid Glass
-                VStack(spacing: 20) {
+                // MARK: - Card Principale Liquid Glass
+                VStack(spacing: 22) {
                     // Intestazione
                     VStack(spacing: 6) {
                         Text(selectedMode == .register ? "Crea Account" : "Bentornato")
-                            .font(.system(size: 26, weight: .bold, design: .rounded))
+                            .font(.system(size: 28, weight: .bold, design: .rounded))
                             .foregroundColor(.white)
                         
-                        Text(selectedMode == .register ? "Inserisci i dati per registrarti" : "Inserisci i tuoi dati per accedere")
+                        Text(selectedMode == .register ? "Inserisci i dati per registrarti" : "Inserisci le tue credenziali per accedere")
                             .font(.system(size: 15))
-                            .foregroundColor(.gray)
+                            .foregroundColor(.white.opacity(0.65))
                     }
-                    .padding(.bottom, 6)
+                    .padding(.bottom, 4)
                     
-                    // Campi di input
+                    // Campi di input in vetro
                     VStack(spacing: 14) {
                         // Nome
-                        customField(
+                        glassTextField(
                             icon: "person.fill",
                             placeholder: "Nome",
                             text: $name
                         )
                         
                         // Password
-                        customPasswordField(
+                        glassPasswordField(
                             icon: "lock.fill",
                             placeholder: "Password",
                             text: $password,
                             isVisible: $showPassword
                         )
                         
-                        // Conferma Password (solo se Registrati)
+                        // Conferma Password (solo in Registrati)
                         if selectedMode == .register {
-                            customPasswordField(
+                            glassPasswordField(
                                 icon: "checkmark.shield.fill",
                                 placeholder: "Conferma password",
                                 text: $confirmPassword,
                                 isVisible: $showConfirmPassword
                             )
-                            .transition(.opacity.combined(with: .move(edge: .top)))
+                            .transition(.asymmetric(
+                                insertion: .opacity.combined(with: .scale(scale: 0.95)),
+                                removal: .opacity.combined(with: .scale(scale: 0.95))
+                            ))
                         }
                     }
                     
-                    // Pulsante Azione (solo grafica per test)
+                    // Pulsante Azione
                     Button(action: {
-                        // Nessuna azione reale, solo test
+                        // Solo grafico di test
                     }) {
                         Text(selectedMode == .register ? "Registrati" : "Accedi")
                             .font(.system(size: 17, weight: .semibold))
@@ -86,19 +93,35 @@ struct ContentView: View {
                             .frame(maxWidth: .infinity)
                             .frame(height: 52)
                             .background(Color.white)
-                            .cornerRadius(14)
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .shadow(color: Color.black.opacity(0.25), radius: 10, x: 0, y: 5)
                     }
-                    .padding(.top, 8)
+                    .padding(.top, 6)
                 }
-                .padding(24)
+                .padding(26)
                 .background(
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    // Materiale Liquid Glass Ufficiale Apple
+                    RoundedRectangle(cornerRadius: 28, style: .continuous)
                         .fill(.ultraThinMaterial)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                )
+                .overlay(
+                    // Bordo speculare a riflessione di luce tipico del vetro Apple
+                    RoundedRectangle(cornerRadius: 28, style: .continuous)
+                        .stroke(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.45),
+                                    Color.white.opacity(0.12),
+                                    Color.clear,
+                                    Color.white.opacity(0.08)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1
                         )
                 )
+                .shadow(color: Color.black.opacity(0.35), radius: 25, x: 0, y: 15)
                 .padding(.horizontal, 20)
                 
                 Spacer()
@@ -106,8 +129,25 @@ struct ContentView: View {
         }
     }
     
-    // MARK: - Slider Superiore
-    private var topSlider: some View {
+    // MARK: - Luci di sfondo per consentire la rifrazione al Materiale Glass
+    private var ambientLighting: some View {
+        ZStack {
+            Circle()
+                .fill(Color(red: 0.25, green: 0.35, blue: 0.55).opacity(0.28))
+                .frame(width: 340, height: 340)
+                .blur(radius: 80)
+                .offset(x: -100, y: -200)
+            
+            Circle()
+                .fill(Color(red: 0.45, green: 0.25, blue: 0.55).opacity(0.22))
+                .frame(width: 320, height: 320)
+                .blur(radius: 85)
+                .offset(x: 120, y: 160)
+        }
+    }
+    
+    // MARK: - Slider Superiore in Materiale Glass Apple
+    private var glassSlider: some View {
         HStack(spacing: 0) {
             ForEach(AuthMode.allCases, id: \.self) { mode in
                 Button(action: {
@@ -116,75 +156,91 @@ struct ContentView: View {
                     }
                 }) {
                     Text(mode.rawValue)
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(selectedMode == mode ? .black : .white.opacity(0.7))
+                        .font(.system(size: 15, weight: selectedMode == mode ? .semibold : .medium))
+                        .foregroundColor(selectedMode == mode ? .white : .white.opacity(0.65))
                         .frame(maxWidth: .infinity)
-                        .frame(height: 44)
-                        .background(
-                            ZStack {
-                                if selectedMode == mode {
-                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                        .fill(Color.white)
-                                        .shadow(color: Color.black.opacity(0.2), radius: 6, x: 0, y: 2)
-                                }
+                        .frame(height: 40)
+                        .background {
+                            if selectedMode == mode {
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .fill(.regularMaterial)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                            .stroke(
+                                                LinearGradient(
+                                                    colors: [Color.white.opacity(0.45), Color.white.opacity(0.1)],
+                                                    startPoint: .topLeading,
+                                                    endPoint: .bottomTrailing
+                                                ),
+                                                lineWidth: 1
+                                            )
+                                    )
+                                    .shadow(color: Color.black.opacity(0.25), radius: 8, x: 0, y: 3)
                             }
-                        )
+                        }
                 }
                 .buttonStyle(.plain)
             }
         }
         .padding(4)
         .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.white.opacity(0.1))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .stroke(Color.white.opacity(0.15), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(.ultraThinMaterial)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(
+                    LinearGradient(
+                        colors: [Color.white.opacity(0.3), Color.white.opacity(0.08)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1
                 )
         )
-        .frame(maxWidth: 320)
+        .frame(maxWidth: 300)
     }
     
-    // MARK: - Campo Testo
-    private func customField(icon: String, placeholder: String, text: Binding<String>) -> some View {
+    // MARK: - Campo di Testo Glass
+    private func glassTextField(icon: String, placeholder: String, text: Binding<String>) -> some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
-                .foregroundColor(.white.opacity(0.6))
+                .foregroundColor(.white.opacity(0.7))
                 .frame(width: 20)
             
-            TextField("", text: text, prompt: Text(placeholder).foregroundColor(.white.opacity(0.4)))
+            TextField("", text: text, prompt: Text(placeholder).foregroundColor(.white.opacity(0.45)))
                 .foregroundColor(.white)
                 .font(.system(size: 16))
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled(true)
         }
         .padding(.horizontal, 16)
-        .frame(height: 50)
+        .frame(height: 52)
         .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(fieldBackground)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(Color.white.opacity(0.1), lineWidth: 1)
-                )
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(.ultraThinMaterial)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color.white.opacity(0.12), lineWidth: 1)
         )
     }
     
-    // MARK: - Campo Password con Toggle Mostra/Nascondi
-    private func customPasswordField(icon: String, placeholder: String, text: Binding<String>, isVisible: Binding<Bool>) -> some View {
+    // MARK: - Campo Password Glass
+    private func glassPasswordField(icon: String, placeholder: String, text: Binding<String>, isVisible: Binding<Bool>) -> some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
-                .foregroundColor(.white.opacity(0.6))
+                .foregroundColor(.white.opacity(0.7))
                 .frame(width: 20)
             
             if isVisible.wrappedValue {
-                TextField("", text: text, prompt: Text(placeholder).foregroundColor(.white.opacity(0.4)))
+                TextField("", text: text, prompt: Text(placeholder).foregroundColor(.white.opacity(0.45)))
                     .foregroundColor(.white)
                     .font(.system(size: 16))
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled(true)
             } else {
-                SecureField("", text: text, prompt: Text(placeholder).foregroundColor(.white.opacity(0.4)))
+                SecureField("", text: text, prompt: Text(placeholder).foregroundColor(.white.opacity(0.45)))
                     .foregroundColor(.white)
                     .font(.system(size: 16))
                     .textInputAutocapitalization(.never)
@@ -195,19 +251,19 @@ struct ContentView: View {
                 isVisible.wrappedValue.toggle()
             }) {
                 Image(systemName: isVisible.wrappedValue ? "eye.slash.fill" : "eye.fill")
-                    .foregroundColor(.white.opacity(0.5))
+                    .foregroundColor(.white.opacity(0.6))
             }
             .buttonStyle(.plain)
         }
         .padding(.horizontal, 16)
-        .frame(height: 50)
+        .frame(height: 52)
         .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(fieldBackground)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(Color.white.opacity(0.1), lineWidth: 1)
-                )
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(.ultraThinMaterial)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color.white.opacity(0.12), lineWidth: 1)
         )
     }
 }
