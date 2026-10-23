@@ -11,14 +11,16 @@ permissions:
 jobs:
   build:
     name: Build iOS IPA
-    runs-on: macos-14
+    runs-on: macos-26
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Show Xcode Version
-        run: xcodebuild -version
+      - name: Show Xcode & SDK Version
+        run: |
+          xcodebuild -version
+          xcodebuild -showsdks
 
       - name: Build Application
         run: |
@@ -49,7 +51,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" Simply/Info.plist 2>/dev/null || echo "0.1.1")
+          VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" Simply/Info.plist 2>/dev/null || echo "0.1.0")
           TAG="v$VERSION"
           echo "Targeting release tag: $TAG"
           if gh release view "$TAG" >/dev/null 2>&1; then
@@ -59,5 +61,5 @@ jobs:
             echo "Creating new release $TAG..."
             gh release create "$TAG" Simply.ipa \
               --title "Simply $TAG" \
-              --notes "Build $TAG: sfondo aggiornato a #1C1C1E e nuova icona ufficiale dell'applicazione. Compatibile con SideStore."
+              --notes "Build $TAG: Compilata con Xcode 26 / iOS 26 SDK. Liquid Glass nativo attivo. Compatibile con SideStore."
           fi
