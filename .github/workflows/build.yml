@@ -49,13 +49,15 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG="v0.1.0"
+          VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" Simply/Info.plist 2>/dev/null || echo "0.1.1")
+          TAG="v$VERSION"
+          echo "Targeting release tag: $TAG"
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "Release $TAG already exists, updating Simply.ipa asset..."
             gh release upload "$TAG" Simply.ipa --clobber
           else
             echo "Creating new release $TAG..."
             gh release create "$TAG" Simply.ipa \
-              --title "Simply v0.1.0" \
-              --notes "Prima build di test Simply: schermata grigia pura per verificare apertura e compatibilità SideStore."
+              --title "Simply $TAG" \
+              --notes "Build $TAG: sfondo aggiornato a #1C1C1E e nuova icona ufficiale dell'applicazione. Compatibile con SideStore."
           fi
