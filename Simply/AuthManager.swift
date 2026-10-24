@@ -5,7 +5,7 @@ import UserNotifications
 
 // MARK: - Models
 
-struct ShoppingItem: Identifiable, Equatable {
+struct ShoppingItem: Identifiable, Equatable, Codable {
     var id: String
     var name: String
     var quantity: String
@@ -49,7 +49,7 @@ struct CalendarEvent: Identifiable, Codable, Equatable {
     }
 }
 
-struct Friend: Identifiable {
+struct Friend: Identifiable, Equatable, Codable {
     var id: String       // uid dell'amico
     var nickname: String
     var friendCode: String
@@ -84,18 +84,29 @@ class AuthManager {
 
     private let db = Firestore.firestore()
     private var myItemsListener: ListenerRegistration?
+    private var friendsListener: ListenerRegistration?
     private var friendsListeners: [String: ListenerRegistration] = [:]
     private var calendarListener: ListenerRegistration?
 
     private init() {
         requestNotificationPermission()
         currentUser = Auth.auth().currentUser
+        if let user = currentUser {
+            let local = loadMyItemsFromLocalCache(uid: user.uid)
+            if !local.isEmpty {
+                self.myItems = local
+            }
+        }
         Auth.auth().addStateDidChangeListener { [weak self] _, user in
             Task { @MainActor in
                 self?.currentUser = user
                 if let user = user {
+                    let local = self?.loadMyItemsFromLocalCache(uid: user.uid) ?? []
+                    if !local.isEmpty && (self?.myItems.isEmpty ?? true) {
+                        self?.myItems = local
+                    }
                     await self?.loadProfile(uid: user.uid)
-                    await self?.loadFriends(uid: user.uid)
+                    self?.startFriendsListener(uid: user.uid)
                     self?.startMyItemsListener(uid: user.uid)
                     self?.startCalendarListener(uid: user.uid)
                 } else {
@@ -115,11 +126,38 @@ class AuthManager {
         String(format: "%06d", Int.random(in: 100000...999999))
     }
 
+    private func generateUniqueFriendCode() async -> String {
+        for _ in 0..<15 {
+            let code = generateCode()
+            if let snap = try? await db.collection("friendCodes").document(code).getDocument(), snap.exists {
+                continue
+            }
+            return code
+        }
+        return generateCode()
+    }
+
+    // Cache locale di sicurezza per la spesa: i dati non andranno mai persi!
+    private func saveMyItemsToLocalCache(_ items: [ShoppingItem], uid: String) {
+        if let data = try? JSONEncoder().encode(items) {
+            UserDefaults.standard.set(data, forKey: "simply_shopping_backup_\(uid)")
+        }
+    }
+
+    private func loadMyItemsFromLocalCache(uid: String) -> [ShoppingItem] {
+        guard let data = UserDefaults.standard.data(forKey: "simply_shopping_backup_\(uid)"),
+              let items = try? JSONDecoder().decode([ShoppingItem].self, from: data) else {
+            return []
+        }
+        return items
+    }
+
     private func clearAll() {
         username = ""; friendCode = ""
         friends = []; myItems = []; friendsItems = [:]
         calendarEvents = []
         myItemsListener?.remove(); myItemsListener = nil
+        friendsListener?.remove(); friendsListener = nil
         calendarListener?.remove(); calendarListener = nil
         friendsListeners.values.forEach { $0.remove() }
         friendsListeners = [:]
@@ -142,10 +180,7 @@ class AuthManager {
         isLoading = true; defer { isLoading = false }
 
         do {
-            var code = generateCode()
-            while (try? await db.collection("friendCodes").document(code).getDocument())?.exists == true {
-                code = generateCode()
-            }
+            let code = await generateUniqueFriendCode()
 
             let result = try await Auth.auth().createUser(withEmail: email(from: clean), password: password)
             let uid = result.user.uid
@@ -156,7 +191,10 @@ class AuthManager {
                 "friendCode": code,
                 "createdAt": FieldValue.serverTimestamp()
             ])
-            try await db.collection("friendCodes").document(code).setData(["uid": uid])
+            try await db.collection("friendCodes").document(code).setData([
+                "uid": uid,
+                "username": lower
+            ])
 
             self.username = lower
             self.friendCode = code
@@ -195,45 +233,121 @@ class AuthManager {
     // MARK: - Profilo
 
     func loadProfile(uid: String) async {
-        guard let doc = try? await db.collection("users").document(uid).getDocument(),
-              let data = doc.data() else { return }
-        self.username = data["username"] as? String ?? ""
-        self.friendCode = data["friendCode"] as? String ?? ""
+        do {
+            let doc = try await db.collection("users").document(uid).getDocument()
+            var code = doc.data()?["friendCode"] as? String ?? ""
+            var uName = doc.data()?["username"] as? String ?? ""
+
+            if uName.isEmpty {
+                uName = currentUser?.email?.components(separatedBy: "@").first ?? "utente"
+            }
+
+            // Se l'account non ha ancora un codice amico a 6 cifre valido, creane uno univoco
+            if code.count != 6 {
+                code = await generateUniqueFriendCode()
+                try? await db.collection("users").document(uid).setData([
+                    "username": uName,
+                    "friendCode": code,
+                    "updatedAt": FieldValue.serverTimestamp()
+                ], merge: true)
+            }
+
+            // Assicuriamoci che l'indice friendCodes sia sempre registrato e aggiornato
+            try? await db.collection("friendCodes").document(code).setData([
+                "uid": uid,
+                "username": uName
+            ], merge: true)
+
+            self.username = uName
+            self.friendCode = code
+        } catch {
+            print("Errore caricamento profilo: \(error)")
+        }
     }
 
-    // MARK: - Amici
+    // MARK: - Amici (in tempo reale)
 
-    func loadFriends(uid: String) async {
-        guard let snap = try? await db.collection("users").document(uid)
-                .collection("friends").getDocuments() else { return }
-        self.friends = snap.documents.compactMap { doc -> Friend? in
-            let d = doc.data()
-            guard let nickname = d["nickname"] as? String,
-                  let code = d["friendCode"] as? String else { return nil }
-            return Friend(id: doc.documentID, nickname: nickname, friendCode: code)
-        }
-        for f in friends { startFriendItemsListener(friendUid: f.id) }
+    func startFriendsListener(uid: String) {
+        friendsListener?.remove()
+        friendsListener = db.collection("users").document(uid)
+            .collection("friends")
+            .addSnapshotListener { [weak self] snap, error in
+                guard let self else { return }
+                if let error = error {
+                    print("Friends listener error: \(error)")
+                    return
+                }
+                guard let docs = snap?.documents else { return }
+
+                Task { @MainActor in
+                    let newFriends = docs.compactMap { doc -> Friend? in
+                        let d = doc.data()
+                        guard let nickname = d["nickname"] as? String,
+                              let code = d["friendCode"] as? String else { return nil }
+                        return Friend(id: doc.documentID, nickname: nickname, friendCode: code)
+                    }
+
+                    if self.friends != newFriends {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                            self.friends = newFriends
+                        }
+                    }
+
+                    for f in newFriends {
+                        self.startFriendItemsListener(friendUid: f.id)
+                    }
+
+                    let activeIds = Set(newFriends.map { $0.id })
+                    for oldId in Array(self.friendsListeners.keys) where !activeIds.contains(oldId) {
+                        self.friendsListeners[oldId]?.remove()
+                        self.friendsListeners.removeValue(forKey: oldId)
+                        self.friendsItems.removeValue(forKey: oldId)
+                    }
+                }
+            }
     }
 
     func addFriend(code: String, nickname: String) async {
         errorMessage = nil
-        let cleanCode = code.trimmingCharacters(in: .whitespaces)
+        let cleanCode = code
+            .replacingOccurrences(of: "#", with: "")
+            .replacingOccurrences(of: " ", with: "")
+            .trimmingCharacters(in: .whitespaces)
         let cleanNick = nickname.trimmingCharacters(in: .whitespaces)
-        guard cleanCode.count == 6 else { errorMessage = "Il codice deve essere di 6 cifre"; return }
-        guard !cleanNick.isEmpty else { errorMessage = "Inserisci un nickname"; return }
-        guard cleanCode != friendCode else { errorMessage = "Non puoi aggiungere te stesso!"; return }
-        guard let uid = currentUser?.uid else { return }
+
+        guard cleanCode.count == 6 else {
+            errorMessage = "Il codice amico deve essere di 6 cifre"
+            return
+        }
+        guard !cleanNick.isEmpty else {
+            errorMessage = "Inserisci un nickname per l'amico"
+            return
+        }
+        guard cleanCode != friendCode else {
+            errorMessage = "Non puoi inserire il tuo stesso codice!"
+            return
+        }
+        guard let uid = currentUser?.uid else {
+            errorMessage = "Sessione non valida"
+            return
+        }
 
         isLoading = true; defer { isLoading = false }
 
         do {
             let snap = try await db.collection("friendCodes").document(cleanCode).getDocument()
-            guard snap.exists, let friendUid = snap.data()?["uid"] as? String else {
-                errorMessage = "Codice non trovato"
+            guard snap.exists, let friendUid = snap.data()?["uid"] as? String, !friendUid.isEmpty else {
+                errorMessage = "Codice non trovato. Verifica le cifre."
                 return
             }
-            guard !friends.contains(where: { $0.id == friendUid }) else {
-                errorMessage = "Amico già aggiunto"
+
+            if friendUid == uid {
+                errorMessage = "Non puoi inserire il tuo stesso codice!"
+                return
+            }
+
+            if friends.contains(where: { $0.id == friendUid }) {
+                errorMessage = "Questo amico è già presente nella tua lista"
                 return
             }
 
@@ -244,50 +358,85 @@ class AuthManager {
                     "addedAt": FieldValue.serverTimestamp()
                 ])
 
-            let f = Friend(id: friendUid, nickname: cleanNick, friendCode: cleanCode)
-            friends.append(f)
+            let newFriend = Friend(id: friendUid, nickname: cleanNick, friendCode: cleanCode)
+            if !friends.contains(where: { $0.id == friendUid }) {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                    friends.append(newFriend)
+                }
+            }
             startFriendItemsListener(friendUid: friendUid)
         } catch {
-            errorMessage = "Errore nell'aggiunta"
+            print("Errore aggiunta amico: \(error)")
+            errorMessage = "Errore durante l'aggiunta. Riprova."
         }
     }
 
     func removeFriend(_ friendUid: String) {
         guard let uid = currentUser?.uid else { return }
-        friends.removeAll { $0.id == friendUid }
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+            friends.removeAll { $0.id == friendUid }
+        }
         friendsListeners[friendUid]?.remove()
         friendsListeners.removeValue(forKey: friendUid)
         friendsItems.removeValue(forKey: friendUid)
-        Task { try? await db.collection("users").document(uid)
-                .collection("friends").document(friendUid).delete() }
+
+        Task {
+            try? await db.collection("users").document(uid)
+                .collection("friends").document(friendUid).delete()
+        }
     }
 
-    // MARK: - Lista spesa mia
+    // MARK: - Lista spesa personale (salvataggio solido su Firestore + cache locale)
 
     func startMyItemsListener(uid: String) {
         myItemsListener?.remove()
+
+        // Carica subito dal backup locale in memoria (zero delay per la mamma)
+        let local = loadMyItemsFromLocalCache(uid: uid)
+        if !local.isEmpty && myItems.isEmpty {
+            myItems = local
+        }
+
         myItemsListener = db.collection("users").document(uid)
             .collection("shopping_items")
             .order(by: "createdAt", descending: true)
-            .addSnapshotListener { [weak self] snap, _ in
-                guard let self, let docs = snap?.documents else { return }
+            .addSnapshotListener { [weak self] snap, error in
+                guard let self else { return }
+                if let error = error {
+                    print("Snapshot listener error spesa: \(error)")
+                    return
+                }
+                guard let docs = snap?.documents else { return }
+
                 Task { @MainActor in
                     let newItems = docs.compactMap { doc -> ShoppingItem? in
                         let d = doc.data()
                         guard let name = d["name"] as? String else { return nil }
+
+                        let date: Date
+                        if let ts = d["createdAt"] as? Timestamp {
+                            date = ts.dateValue()
+                        } else if let ts = d["serverCreatedAt"] as? Timestamp {
+                            date = ts.dateValue()
+                        } else {
+                            date = Date()
+                        }
+
                         return ShoppingItem(
                             id: doc.documentID,
                             name: name,
                             quantity: d["quantity"] as? String ?? "",
                             completed: d["completed"] as? Bool ?? false,
-                            createdAt: (d["createdAt"] as? Timestamp)?.dateValue() ?? Date()
+                            createdAt: date
                         )
                     }
+
                     if self.myItems != newItems {
                         withAnimation(.spring(response: 0.45, dampingFraction: 0.75)) {
                             self.myItems = newItems
                         }
                     }
+                    self.saveMyItemsToLocalCache(self.myItems, uid: uid)
                 }
             }
     }
@@ -297,24 +446,36 @@ class AuthManager {
         let t = name.trimmingCharacters(in: .whitespaces)
         guard !t.isEmpty else { return }
 
-        let tempId = UUID().uuidString
-        let tempItem = ShoppingItem(id: tempId, name: t, quantity: quantity, completed: false, createdAt: Date())
+        // Genera il documentID nativo di Firestore prima, così da sincronizzare ID locale e remoto al 100%
+        let docRef = db.collection("users").document(uid).collection("shopping_items").document()
+        let itemId = docRef.documentID
+        let now = Date()
+
+        let newItem = ShoppingItem(
+            id: itemId,
+            name: t,
+            quantity: quantity,
+            completed: false,
+            createdAt: now
+        )
 
         withAnimation(.spring(response: 0.45, dampingFraction: 0.75)) {
-            myItems.insert(tempItem, at: 0)
+            myItems.insert(newItem, at: 0)
         }
+        saveMyItemsToLocalCache(myItems, uid: uid)
 
         Task {
-            if let ref = try? await db.collection("users").document(uid)
-                .collection("shopping_items").addDocument(data: [
+            do {
+                try await docRef.setData([
+                    "id": itemId,
                     "name": t,
                     "quantity": quantity,
                     "completed": false,
-                    "createdAt": FieldValue.serverTimestamp()
-                ]) {
-                if let idx = self.myItems.firstIndex(where: { $0.id == tempId }) {
-                    self.myItems[idx].id = ref.documentID
-                }
+                    "createdAt": Timestamp(date: now),
+                    "serverCreatedAt": FieldValue.serverTimestamp()
+                ])
+            } catch {
+                print("Errore salvataggio prodotto spesa su Firestore: \(error)")
             }
         }
     }
@@ -326,12 +487,21 @@ class AuthManager {
             withAnimation(.spring(response: 0.45, dampingFraction: 0.75)) {
                 myItems[idx].completed.toggle()
             }
+            saveMyItemsToLocalCache(myItems, uid: uid)
         }
 
+        let newStatus = !item.completed
         Task {
-            try? await db.collection("users").document(uid)
-                .collection("shopping_items").document(item.id)
-                .updateData(["completed": !item.completed])
+            do {
+                try await db.collection("users").document(uid)
+                    .collection("shopping_items").document(item.id)
+                    .updateData([
+                        "completed": newStatus,
+                        "updatedAt": FieldValue.serverTimestamp()
+                    ])
+            } catch {
+                print("Errore toggle spesa su Firestore: \(error)")
+            }
         }
     }
 
@@ -341,34 +511,57 @@ class AuthManager {
         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
             myItems.removeAll { $0.id == item.id }
         }
+        saveMyItemsToLocalCache(myItems, uid: uid)
 
         Task {
-            try? await db.collection("users").document(uid)
-                .collection("shopping_items").document(item.id).delete()
+            do {
+                try await db.collection("users").document(uid)
+                    .collection("shopping_items").document(item.id).delete()
+            } catch {
+                print("Errore cancellazione prodotto spesa su Firestore: \(error)")
+            }
         }
     }
 
-    // MARK: - Lista spesa amici
+    // MARK: - Lista spesa amici (in tempo reale)
 
     func startFriendItemsListener(friendUid: String) {
-        friendsListeners[friendUid]?.remove()
+        guard friendsListeners[friendUid] == nil else { return }
+
         friendsListeners[friendUid] = db.collection("users").document(friendUid)
             .collection("shopping_items")
             .order(by: "createdAt", descending: true)
-            .addSnapshotListener { [weak self] snap, _ in
-                guard let self, let docs = snap?.documents else { return }
+            .addSnapshotListener { [weak self] snap, error in
+                guard let self else { return }
+                if let error = error {
+                    print("Friend items listener error: \(error)")
+                    return
+                }
+                guard let docs = snap?.documents else { return }
+
                 Task { @MainActor in
                     let newItems = docs.compactMap { doc -> ShoppingItem? in
                         let d = doc.data()
                         guard let name = d["name"] as? String else { return nil }
+
+                        let date: Date
+                        if let ts = d["createdAt"] as? Timestamp {
+                            date = ts.dateValue()
+                        } else if let ts = d["serverCreatedAt"] as? Timestamp {
+                            date = ts.dateValue()
+                        } else {
+                            date = Date()
+                        }
+
                         return ShoppingItem(
                             id: doc.documentID,
                             name: name,
                             quantity: d["quantity"] as? String ?? "",
                             completed: d["completed"] as? Bool ?? false,
-                            createdAt: (d["createdAt"] as? Timestamp)?.dateValue() ?? Date()
+                            createdAt: date
                         )
                     }
+
                     if self.friendsItems[friendUid] != newItems {
                         withAnimation(.spring(response: 0.45, dampingFraction: 0.75)) {
                             self.friendsItems[friendUid] = newItems
@@ -386,10 +579,18 @@ class AuthManager {
             }
         }
 
+        let newStatus = !item.completed
         Task {
-            try? await db.collection("users").document(friendUid)
-                .collection("shopping_items").document(item.id)
-                .updateData(["completed": !item.completed])
+            do {
+                try await db.collection("users").document(friendUid)
+                    .collection("shopping_items").document(item.id)
+                    .updateData([
+                        "completed": newStatus,
+                        "updatedAt": FieldValue.serverTimestamp()
+                    ])
+            } catch {
+                print("Errore toggle spesa amico su Firestore: \(error)")
+            }
         }
     }
 

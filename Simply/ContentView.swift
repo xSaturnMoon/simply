@@ -642,6 +642,9 @@ struct FriendDetailView: View {
             .animation(.spring(response: 0.45, dampingFraction: 0.75), value: completedItems)
         }
         .navigationTitle(friend.nickname)
+        .onAppear {
+            auth.startFriendItemsListener(friendUid: friend.id)
+        }
     }
 }
 
@@ -1280,6 +1283,7 @@ struct AllRemindersView: View {
 
 struct ProfileView: View {
     @State private var auth = AuthManager.shared
+    @State private var isCopied = false
     private let bg = Color(red: 28/255, green: 28/255, blue: 30/255)
 
     var body: some View {
@@ -1295,24 +1299,38 @@ struct ProfileView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
 
                     // Username + codice
-                    VStack(spacing: 6) {
+                    VStack(spacing: 8) {
                         Text(auth.username.isEmpty ? "" : "@\(auth.username)")
                             .font(.title2.bold()).foregroundStyle(.white)
                         if !auth.friendCode.isEmpty {
-                            HStack(spacing: 6) {
-                                Text("#\(auth.friendCode)")
-                                    .font(.system(size: 14, weight: .medium, design: .monospaced))
-                                    .foregroundStyle(.white.opacity(0.5))
-                                Button {
-                                    UIPasteboard.general.string = auth.friendCode
-                                } label: {
-                                    Image(systemName: "doc.on.doc")
-                                        .font(.system(size: 12))
-                                        .foregroundStyle(.white.opacity(0.4))
+                            Button {
+                                UIPasteboard.general.string = auth.friendCode
+                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                withAnimation { isCopied = true }
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
+                                    withAnimation { isCopied = false }
                                 }
-                                .buttonStyle(.plain)
-                                .contentShape(Rectangle())
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Text("#\(auth.friendCode)")
+                                        .font(.system(size: 15, weight: .bold, design: .monospaced))
+                                        .foregroundStyle(.white.opacity(0.85))
+                                    Image(systemName: isCopied ? "checkmark" : "doc.on.doc")
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundStyle(isCopied ? .green : .white.opacity(0.5))
+                                    if isCopied {
+                                        Text("Copiato!")
+                                            .font(.caption2.bold())
+                                            .foregroundStyle(.green)
+                                    }
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(Color.white.opacity(0.08))
+                                .clipShape(Capsule())
                             }
+                            .buttonStyle(.plain)
+                            .contentShape(Capsule())
                         }
                     }
 
@@ -1344,6 +1362,13 @@ struct ProfileView: View {
                 }
             }
             .toolbarVisibility(.hidden, for: .navigationBar)
+            .onAppear {
+                if let uid = auth.currentUser?.uid, auth.friendCode.isEmpty {
+                    Task {
+                        await auth.loadProfile(uid: uid)
+                    }
+                }
+            }
         }
     }
 }
@@ -1367,23 +1392,37 @@ struct FriendsView: View {
                 // Header
                 HStack {
                     Button { dismiss() } label: {
-                        Image(systemName: "chevron.left").font(.system(size: 17, weight: .semibold))
-                            .foregroundStyle(.white).frame(width: 38, height: 38).glassEffect(.regular, in: Circle())
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 38, height: 38)
+                            .background(.ultraThinMaterial)
+                            .clipShape(Circle())
+                            .overlay(Circle().stroke(Color.white.opacity(0.12), lineWidth: 1))
                     }
                     .buttonStyle(.plain)
                     .contentShape(Circle())
+
                     Spacer()
+
                     Button {
                         withAnimation(.spring(response: 0.35)) { showAdd.toggle() }
                         if showAdd { codeFocused = true }
                     } label: {
                         Image(systemName: showAdd ? "xmark" : "person.badge.plus")
-                            .font(.system(size: 16, weight: .semibold)).foregroundStyle(.white)
-                            .frame(width: 38, height: 38).glassEffect(.regular, in: Circle())
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 38, height: 38)
+                            .background(.ultraThinMaterial)
+                            .clipShape(Circle())
+                            .overlay(Circle().stroke(Color.white.opacity(0.12), lineWidth: 1))
                     }
                     .buttonStyle(.plain)
                     .contentShape(Circle())
-                }.padding(.horizontal, 24).padding(.top, 20).padding(.bottom, 28)
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 20)
+                .padding(.bottom, 28)
 
                 Text("Amici").font(.title.bold()).foregroundStyle(.white)
                     .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 24).padding(.bottom, 20)
@@ -1393,6 +1432,7 @@ struct FriendsView: View {
                     VStack(spacing: 10) {
                         AuthField(icon: "number", placeholder: "Codice a 6 cifre", text: $codeInput)
                             .keyboardType(.numberPad)
+                            .focused($codeFocused)
                         AuthField(icon: "person", placeholder: "Come vuoi chiamarlo?", text: $nicknameInput)
 
                         if let msg = auth.errorMessage {
@@ -1429,7 +1469,7 @@ struct FriendsView: View {
                             .foregroundStyle(.white.opacity(0.2))
                         Text("Nessun amico aggiunto").font(.system(size: 16))
                             .foregroundStyle(.white.opacity(0.3))
-                        Text("Tocca + per aggiungerne uno").font(.system(size: 14))
+                        Text("Tocca + per aggiungerne uno col suo codice").font(.system(size: 14))
                             .foregroundStyle(.white.opacity(0.2))
                     }
                     Spacer()
@@ -1447,11 +1487,14 @@ struct FriendsView: View {
                                             .foregroundStyle(.white.opacity(0.4))
                                     }
                                     Spacer()
-                                    Button { auth.removeFriend(friend.id) } label: {
+                                    Button {
+                                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                        auth.removeFriend(friend.id)
+                                    } label: {
                                         Image(systemName: "person.badge.minus")
                                             .font(.system(size: 16))
                                             .frame(width: 44, height: 44)
-                                            .foregroundStyle(.red.opacity(0.6))
+                                            .foregroundStyle(.red.opacity(0.7))
                                             .contentShape(Rectangle())
                                     }
                                     .buttonStyle(.plain)
