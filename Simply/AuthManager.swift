@@ -107,6 +107,11 @@ class AuthManager {
     private var hasLoadedCalendarEvents = false
 
     private init() {
+        let settings = Firestore.firestore().settings
+        settings.isPersistenceEnabled = true
+        settings.cacheSizeBytes = FirestoreCacheSizeUnlimited
+        Firestore.firestore().settings = settings
+
         requestNotificationPermission()
         currentUser = Auth.auth().currentUser
         if let user = currentUser {
@@ -177,41 +182,6 @@ class AuthManager {
             return code
         }
         return generateCode()
-    }
-
-    // Tracking elementi eliminati esplicitamente dall'utente per evitare che ricompaiano da snapshot obsoleti o wipeout
-    private func deletedItemIds(uid: String) -> Set<String> {
-        let array = UserDefaults.standard.stringArray(forKey: "simply_deleted_items_\(uid)") ?? []
-        return Set(array)
-    }
-
-    private func markItemDeleted(_ id: String, uid: String) {
-        var ids = deletedItemIds(uid: uid)
-        ids.insert(id)
-        UserDefaults.standard.set(Array(ids), forKey: "simply_deleted_items_\(uid)")
-    }
-
-    private func unmarkItemDeleted(_ id: String, uid: String) {
-        var ids = deletedItemIds(uid: uid)
-        ids.remove(id)
-        UserDefaults.standard.set(Array(ids), forKey: "simply_deleted_items_\(uid)")
-    }
-
-    private func deletedEventIds(uid: String) -> Set<String> {
-        let array = UserDefaults.standard.stringArray(forKey: "simply_deleted_events_\(uid)") ?? []
-        return Set(array)
-    }
-
-    private func markEventDeleted(_ id: String, uid: String) {
-        var ids = deletedEventIds(uid: uid)
-        ids.insert(id)
-        UserDefaults.standard.set(Array(ids), forKey: "simply_deleted_events_\(uid)")
-    }
-
-    private func unmarkEventDeleted(_ id: String, uid: String) {
-        var ids = deletedEventIds(uid: uid)
-        ids.remove(id)
-        UserDefaults.standard.set(Array(ids), forKey: "simply_deleted_events_\(uid)")
     }
 
     // Cache profilo: username e friendCode disponibili istantaneamente anche offline
@@ -646,19 +616,14 @@ class AuthManager {
                 guard let docs = snap?.documents else { return }
 
                 Task { @MainActor in
-                    let deleted = self.deletedItemIds(uid: uid)
-
-                    let remoteItems = docs.compactMap { doc -> ShoppingItem? in
-                        let docId = doc.documentID
-                        if deleted.contains(docId) { return nil }
-
+                    let newItems = docs.compactMap { doc -> ShoppingItem? in
                         let d = doc.data()
                         guard let name = d["name"] as? String else { return nil }
 
                         let date = self.parseDate(d["createdAt"]) ?? self.parseDate(d["serverCreatedAt"]) ?? Date()
 
                         return ShoppingItem(
-                            id: docId,
+                            id: doc.documentID,
                             name: name,
                             quantity: d["quantity"] as? String ?? "",
                             completed: d["completed"] as? Bool ?? false,
@@ -666,45 +631,14 @@ class AuthManager {
                         )
                     }
 
-                    // Riconciliazione sicura a 2 vie: mantieni elementi locali non ancora arrivati su Firestore
-                    var merged = remoteItems
-                    let remoteIds = Set(remoteItems.map { $0.id })
-
-                    for localItem in self.myItems {
-                        if !remoteIds.contains(localItem.id) && !deleted.contains(localItem.id) {
-                            merged.append(localItem)
-                            self.pushItemToFirestore(localItem, uid: uid)
-                        }
-                    }
-
-                    merged.sort { $0.createdAt > $1.createdAt }
-
-                    if self.myItems != merged {
+                    if self.myItems != newItems {
                         withAnimation(.spring(response: 0.45, dampingFraction: 0.75)) {
-                            self.myItems = merged
+                            self.myItems = newItems
                         }
                     }
                     self.saveMyItemsToLocalCache(self.myItems, uid: uid)
                 }
             }
-    }
-
-    private func pushItemToFirestore(_ item: ShoppingItem, uid: String) {
-        Task {
-            do {
-                try await db.collection("users").document(uid)
-                    .collection("shopping_items").document(item.id).setData([
-                        "id": item.id,
-                        "name": item.name,
-                        "quantity": item.quantity,
-                        "completed": item.completed,
-                        "createdAt": Timestamp(date: item.createdAt),
-                        "serverCreatedAt": FieldValue.serverTimestamp()
-                    ], merge: true)
-            } catch {
-                print("Errore push spesa su Firestore: \(error)")
-            }
-        }
     }
 
     func addMyItem(name: String, quantity: String = "") {
@@ -716,8 +650,6 @@ class AuthManager {
         let docRef = db.collection("users").document(uid).collection("shopping_items").document()
         let itemId = docRef.documentID
         let now = Date()
-
-        unmarkItemDeleted(itemId, uid: uid)
 
         let newItem = ShoppingItem(
             id: itemId,
@@ -732,7 +664,20 @@ class AuthManager {
         }
         saveMyItemsToLocalCache(myItems, uid: uid)
 
-        pushItemToFirestore(newItem, uid: uid)
+        Task {
+            do {
+                try await docRef.setData([
+                    "id": itemId,
+                    "name": t,
+                    "quantity": quantity,
+                    "completed": false,
+                    "createdAt": Timestamp(date: now),
+                    "serverCreatedAt": FieldValue.serverTimestamp()
+                ])
+            } catch {
+                print("Errore salvataggio prodotto spesa su Firestore: \(error)")
+            }
+        }
     }
 
     func toggleMyItem(_ item: ShoppingItem) {
@@ -762,8 +707,6 @@ class AuthManager {
 
     func deleteMyItem(_ item: ShoppingItem) {
         guard let uid = currentUser?.uid else { return }
-
-        markItemDeleted(item.id, uid: uid)
 
         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
             myItems.removeAll { $0.id == item.id }
@@ -879,15 +822,11 @@ class AuthManager {
                     self.hasLoadedCalendarEvents = true
                     let cal = Calendar.current
                     let cutoffDate = cal.date(byAdding: .month, value: -1, to: Date()) ?? Date().addingTimeInterval(-30 * 24 * 3600)
-                    let deleted = self.deletedEventIds(uid: uid)
-
                     var validEvents: [CalendarEvent] = []
                     var expiredIds: [String] = []
 
                     for doc in docs {
                         let docId = doc.documentID
-                        if deleted.contains(docId) { continue }
-
                         let d = doc.data()
                         guard let title = d["title"] as? String else { continue }
 
@@ -913,24 +852,9 @@ class AuthManager {
                         validEvents.append(event)
                     }
 
-                    // Riconciliazione sicura a 2 vie: mantieni eventi locali non ancora arrivati su Firestore
-                    var merged = validEvents
-                    let remoteIds = Set(validEvents.map { $0.id })
-
-                    for localEvent in self.calendarEvents {
-                        if !remoteIds.contains(localEvent.id) && !deleted.contains(localEvent.id) {
-                            if localEvent.date >= cutoffDate {
-                                merged.append(localEvent)
-                                self.pushEventToFirestore(localEvent, uid: uid)
-                            }
-                        }
-                    }
-
-                    merged.sort { $0.startTime < $1.startTime }
-
-                    if self.calendarEvents != merged {
+                    if self.calendarEvents != validEvents {
                         withAnimation(.spring(response: 0.45, dampingFraction: 0.75)) {
-                            self.calendarEvents = merged
+                            self.calendarEvents = validEvents
                         }
                     }
                     self.saveCalendarToLocalCache(self.calendarEvents, uid: uid)
@@ -951,31 +875,6 @@ class AuthManager {
             }
     }
 
-    private func pushEventToFirestore(_ event: CalendarEvent, uid: String) {
-        Task {
-            do {
-                var data: [String: Any] = [
-                    "id": event.id,
-                    "title": event.title,
-                    "date": Timestamp(date: event.date),
-                    "startTime": Timestamp(date: event.startTime),
-                    "isCompleted": event.isCompleted,
-                    "reminderEnabled": event.reminderEnabled,
-                    "createdAt": Timestamp(date: Date()),
-                    "serverCreatedAt": FieldValue.serverTimestamp()
-                ]
-                if let rt = event.reminderTime {
-                    data["reminderTime"] = Timestamp(date: rt)
-                }
-                try await db.collection("users").document(uid)
-                    .collection("calendar_events").document(event.id)
-                    .setData(data, merge: true)
-            } catch {
-                print("Errore push evento su Firestore: \(error)")
-            }
-        }
-    }
-
     func addEvent(title: String, date: Date, startTime: Date, reminderEnabled: Bool, reminderTime: Date? = nil) {
         guard let uid = currentUser?.uid else { return }
         let cleanTitle = title.trimmingCharacters(in: .whitespaces)
@@ -984,7 +883,7 @@ class AuthManager {
         // Genera il documentID nativo di Firestore prima dell'inserimento: sincronizzazione perfetta
         let docRef = db.collection("users").document(uid).collection("calendar_events").document()
         let eventId = docRef.documentID
-        unmarkEventDeleted(eventId, uid: uid)
+        let now = Date()
 
         let newEvent = CalendarEvent(
             id: eventId,
@@ -1006,7 +905,27 @@ class AuthManager {
             scheduleNotification(for: newEvent)
         }
 
-        pushEventToFirestore(newEvent, uid: uid)
+        Task {
+            do {
+                var data: [String: Any] = [
+                    "id": eventId,
+                    "title": cleanTitle,
+                    "date": Timestamp(date: date),
+                    "startTime": Timestamp(date: startTime),
+                    "isCompleted": false,
+                    "reminderEnabled": reminderEnabled,
+                    "createdAt": Timestamp(date: now),
+                    "serverCreatedAt": FieldValue.serverTimestamp()
+                ]
+                if let rt = reminderTime {
+                    data["reminderTime"] = Timestamp(date: rt)
+                }
+
+                try await docRef.setData(data)
+            } catch {
+                print("Errore salvataggio evento su Firestore: \(error)")
+            }
+        }
     }
 
     func updateEvent(_ event: CalendarEvent) {
@@ -1053,8 +972,6 @@ class AuthManager {
 
     func deleteEvent(_ event: CalendarEvent) {
         guard let uid = currentUser?.uid else { return }
-
-        markEventDeleted(event.id, uid: uid)
 
         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
             calendarEvents.removeAll { $0.id == event.id }
