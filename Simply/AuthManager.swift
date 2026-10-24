@@ -92,18 +92,28 @@ class AuthManager {
         requestNotificationPermission()
         currentUser = Auth.auth().currentUser
         if let user = currentUser {
-            let local = loadMyItemsFromLocalCache(uid: user.uid)
-            if !local.isEmpty {
-                self.myItems = local
+            let localItems = loadMyItemsFromLocalCache(uid: user.uid)
+            if !localItems.isEmpty {
+                self.myItems = localItems
+            }
+            let localEvents = loadCalendarFromLocalCache(uid: user.uid)
+            if !localEvents.isEmpty {
+                self.calendarEvents = localEvents
+                purgeOldEvents(uid: user.uid)
             }
         }
         Auth.auth().addStateDidChangeListener { [weak self] _, user in
             Task { @MainActor in
                 self?.currentUser = user
                 if let user = user {
-                    let local = self?.loadMyItemsFromLocalCache(uid: user.uid) ?? []
-                    if !local.isEmpty && (self?.myItems.isEmpty ?? true) {
-                        self?.myItems = local
+                    let localItems = self?.loadMyItemsFromLocalCache(uid: user.uid) ?? []
+                    if !localItems.isEmpty && (self?.myItems.isEmpty ?? true) {
+                        self?.myItems = localItems
+                    }
+                    let localEvents = self?.loadCalendarFromLocalCache(uid: user.uid) ?? []
+                    if !localEvents.isEmpty && (self?.calendarEvents.isEmpty ?? true) {
+                        self?.calendarEvents = localEvents
+                        self?.purgeOldEvents(uid: user.uid)
                     }
                     await self?.loadProfile(uid: user.uid)
                     self?.startFriendsListener(uid: user.uid)
@@ -150,6 +160,45 @@ class AuthManager {
             return []
         }
         return items
+    }
+
+    // Cache locale di sicurezza per il calendario: appuntamenti garantiti su disco!
+    private func saveCalendarToLocalCache(_ events: [CalendarEvent], uid: String) {
+        if let data = try? JSONEncoder().encode(events) {
+            UserDefaults.standard.set(data, forKey: "simply_calendar_backup_\(uid)")
+        }
+    }
+
+    private func loadCalendarFromLocalCache(uid: String) -> [CalendarEvent] {
+        guard let data = UserDefaults.standard.data(forKey: "simply_calendar_backup_\(uid)"),
+              let events = try? JSONDecoder().decode([CalendarEvent].self, from: data) else {
+            return []
+        }
+        return events
+    }
+
+    // Auto-eliminazione appuntamenti più vecchi di un mese (es. se oggi è il 24 ottobre, prima del 24 settembre si eliminano automaticamente)
+    func purgeOldEvents(uid: String) {
+        let cal = Calendar.current
+        guard let cutoffDate = cal.date(byAdding: .month, value: -1, to: Date()) else { return }
+
+        let expired = calendarEvents.filter { $0.date < cutoffDate }
+        guard !expired.isEmpty else { return }
+
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+            calendarEvents.removeAll { $0.date < cutoffDate }
+        }
+        saveCalendarToLocalCache(calendarEvents, uid: uid)
+
+        let expiredIds = expired.map { $0.id }
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: expiredIds)
+
+        Task {
+            for id in expiredIds {
+                try? await db.collection("users").document(uid)
+                    .collection("calendar_events").document(id).delete()
+            }
+        }
     }
 
     private func clearAll() {
@@ -594,32 +643,89 @@ class AuthManager {
         }
     }
 
-    // MARK: - Calendario
+    // MARK: - Calendario (Persistenza solida su Firestore + Cache locale + Pulizia automatica 1 mese)
 
     func startCalendarListener(uid: String) {
         calendarListener?.remove()
+
+        // Carica subito dal backup locale in memoria (zero delay per la mamma)
+        let local = loadCalendarFromLocalCache(uid: uid)
+        if !local.isEmpty && calendarEvents.isEmpty {
+            calendarEvents = local
+            purgeOldEvents(uid: uid)
+        }
+
         calendarListener = db.collection("users").document(uid)
             .collection("calendar_events")
             .order(by: "startTime", descending: false)
-            .addSnapshotListener { [weak self] snap, _ in
-                guard let self, let docs = snap?.documents else { return }
+            .addSnapshotListener { [weak self] snap, error in
+                guard let self else { return }
+                if let error = error {
+                    print("Snapshot listener error calendario: \(error)")
+                    return
+                }
+                guard let docs = snap?.documents else { return }
+
                 Task { @MainActor in
-                    let loaded = docs.compactMap { doc -> CalendarEvent? in
+                    let cal = Calendar.current
+                    let cutoffDate = cal.date(byAdding: .month, value: -1, to: Date()) ?? Date().addingTimeInterval(-30 * 24 * 3600)
+
+                    var validEvents: [CalendarEvent] = []
+                    var expiredIds: [String] = []
+
+                    for doc in docs {
                         let d = doc.data()
-                        guard let title = d["title"] as? String else { return nil }
-                        return CalendarEvent(
+                        guard let title = d["title"] as? String else { continue }
+
+                        let date: Date
+                        if let ts = d["date"] as? Timestamp {
+                            date = ts.dateValue()
+                        } else {
+                            date = Date()
+                        }
+
+                        let startTime: Date
+                        if let ts = d["startTime"] as? Timestamp {
+                            startTime = ts.dateValue()
+                        } else {
+                            startTime = date
+                        }
+
+                        let reminderTime = (d["reminderTime"] as? Timestamp)?.dateValue()
+
+                        // Se l'evento è più vecchio di 1 mese, marcalo per l'eliminazione automatica
+                        if date < cutoffDate {
+                            expiredIds.append(doc.documentID)
+                            continue
+                        }
+
+                        let event = CalendarEvent(
                             id: doc.documentID,
                             title: title,
-                            date: (d["date"] as? Timestamp)?.dateValue() ?? Date(),
-                            startTime: (d["startTime"] as? Timestamp)?.dateValue() ?? Date(),
+                            date: date,
+                            startTime: startTime,
                             isCompleted: d["isCompleted"] as? Bool ?? false,
                             reminderEnabled: d["reminderEnabled"] as? Bool ?? false,
-                            reminderTime: (d["reminderTime"] as? Timestamp)?.dateValue()
+                            reminderTime: reminderTime
                         )
+                        validEvents.append(event)
                     }
-                    if self.calendarEvents != loaded {
+
+                    if self.calendarEvents != validEvents {
                         withAnimation(.spring(response: 0.45, dampingFraction: 0.75)) {
-                            self.calendarEvents = loaded
+                            self.calendarEvents = validEvents
+                        }
+                    }
+                    self.saveCalendarToLocalCache(validEvents, uid: uid)
+
+                    // Elimina dal database Firestore i vecchi appuntamenti scaduti
+                    if !expiredIds.isEmpty {
+                        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: expiredIds)
+                        Task {
+                            for oldId in expiredIds {
+                                try? await self.db.collection("users").document(uid)
+                                    .collection("calendar_events").document(oldId).delete()
+                            }
                         }
                     }
                 }
@@ -628,10 +734,17 @@ class AuthManager {
 
     func addEvent(title: String, date: Date, startTime: Date, reminderEnabled: Bool, reminderTime: Date? = nil) {
         guard let uid = currentUser?.uid else { return }
-        let tempId = UUID().uuidString
+        let cleanTitle = title.trimmingCharacters(in: .whitespaces)
+        guard !cleanTitle.isEmpty else { return }
+
+        // Genera il documentID nativo di Firestore in modo sincrono prima dell'inserimento: zero disallineamenti!
+        let docRef = db.collection("users").document(uid).collection("calendar_events").document()
+        let eventId = docRef.documentID
+        let now = Date()
+
         let newEvent = CalendarEvent(
-            id: tempId,
-            title: title,
+            id: eventId,
+            title: cleanTitle,
             date: date,
             startTime: startTime,
             isCompleted: false,
@@ -642,29 +755,31 @@ class AuthManager {
         withAnimation(.spring(response: 0.45, dampingFraction: 0.75)) {
             calendarEvents.append(newEvent)
         }
+        saveCalendarToLocalCache(calendarEvents, uid: uid)
 
         if reminderEnabled {
             scheduleNotification(for: newEvent)
         }
 
         Task {
-            var data: [String: Any] = [
-                "title": title,
-                "date": Timestamp(date: date),
-                "startTime": Timestamp(date: startTime),
-                "isCompleted": false,
-                "reminderEnabled": reminderEnabled,
-                "createdAt": FieldValue.serverTimestamp()
-            ]
-            if let rt = reminderTime {
-                data["reminderTime"] = Timestamp(date: rt)
-            }
-
-            if let ref = try? await db.collection("users").document(uid)
-                .collection("calendar_events").addDocument(data: data) {
-                if let idx = self.calendarEvents.firstIndex(where: { $0.id == tempId }) {
-                    self.calendarEvents[idx].id = ref.documentID
+            do {
+                var data: [String: Any] = [
+                    "id": eventId,
+                    "title": cleanTitle,
+                    "date": Timestamp(date: date),
+                    "startTime": Timestamp(date: startTime),
+                    "isCompleted": false,
+                    "reminderEnabled": reminderEnabled,
+                    "createdAt": Timestamp(date: now),
+                    "serverCreatedAt": FieldValue.serverTimestamp()
+                ]
+                if let rt = reminderTime {
+                    data["reminderTime"] = Timestamp(date: rt)
                 }
+
+                try await docRef.setData(data)
+            } catch {
+                print("Errore salvataggio evento su Firestore: \(error)")
             }
         }
     }
@@ -676,6 +791,7 @@ class AuthManager {
             withAnimation(.spring(response: 0.45, dampingFraction: 0.75)) {
                 calendarEvents[idx] = event
             }
+            saveCalendarToLocalCache(calendarEvents, uid: uid)
         }
 
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [event.id])
@@ -684,20 +800,28 @@ class AuthManager {
         }
 
         Task {
-            var data: [String: Any] = [
-                "title": event.title,
-                "date": Timestamp(date: event.date),
-                "startTime": Timestamp(date: event.startTime),
-                "isCompleted": event.isCompleted,
-                "reminderEnabled": event.reminderEnabled
-            ]
-            if let rt = event.reminderTime {
-                data["reminderTime"] = Timestamp(date: rt)
-            } else {
-                data["reminderTime"] = FieldValue.delete()
+            do {
+                var data: [String: Any] = [
+                    "id": event.id,
+                    "title": event.title,
+                    "date": Timestamp(date: event.date),
+                    "startTime": Timestamp(date: event.startTime),
+                    "isCompleted": event.isCompleted,
+                    "reminderEnabled": event.reminderEnabled,
+                    "updatedAt": FieldValue.serverTimestamp()
+                ]
+                if let rt = event.reminderTime {
+                    data["reminderTime"] = Timestamp(date: rt)
+                } else {
+                    data["reminderTime"] = FieldValue.delete()
+                }
+
+                try await db.collection("users").document(uid)
+                    .collection("calendar_events").document(event.id)
+                    .setData(data, merge: true)
+            } catch {
+                print("Errore aggiornamento evento su Firestore: \(error)")
             }
-            try? await db.collection("users").document(uid)
-                .collection("calendar_events").document(event.id).updateData(data)
         }
     }
 
@@ -707,12 +831,17 @@ class AuthManager {
         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
             calendarEvents.removeAll { $0.id == event.id }
         }
+        saveCalendarToLocalCache(calendarEvents, uid: uid)
 
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [event.id])
 
         Task {
-            try? await db.collection("users").document(uid)
-                .collection("calendar_events").document(event.id).delete()
+            do {
+                try await db.collection("users").document(uid)
+                    .collection("calendar_events").document(event.id).delete()
+            } catch {
+                print("Errore cancellazione evento su Firestore: \(error)")
+            }
         }
     }
 
@@ -723,12 +852,21 @@ class AuthManager {
             withAnimation(.spring(response: 0.45, dampingFraction: 0.75)) {
                 calendarEvents[idx].isCompleted.toggle()
             }
+            saveCalendarToLocalCache(calendarEvents, uid: uid)
         }
 
+        let newStatus = !event.isCompleted
         Task {
-            try? await db.collection("users").document(uid)
-                .collection("calendar_events").document(event.id)
-                .updateData(["isCompleted": !event.isCompleted])
+            do {
+                try await db.collection("users").document(uid)
+                    .collection("calendar_events").document(event.id)
+                    .updateData([
+                        "isCompleted": newStatus,
+                        "updatedAt": FieldValue.serverTimestamp()
+                    ])
+            } catch {
+                print("Errore toggle complete evento: \(error)")
+            }
         }
     }
 

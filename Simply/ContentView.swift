@@ -848,6 +848,11 @@ struct CalendarView: View {
             .sheet(item: $selectedEvent) { event in
                 EditEventView(event: event)
             }
+            .onAppear {
+                if let uid = auth.currentUser?.uid {
+                    auth.purgeOldEvents(uid: uid)
+                }
+            }
         }
     }
 
