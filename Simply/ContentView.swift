@@ -303,6 +303,135 @@ struct MainAppView: View {
     }
 }
 
+// MARK: - Icon Picker View
+
+struct AppIconOption: Identifiable {
+    let id: String          // nome icona (nil = primaria)
+    let assetName: String?  // nome immagine in Assets o bundle (nil = usa AppLogo)
+    let label: String
+}
+
+struct IconPickerView: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var currentIcon: String? = UIApplication.shared.alternateIconName
+    private let bg = Color(red: 28/255, green: 28/255, blue: 30/255)
+
+    private let icons: [AppIconOption] = [
+        AppIconOption(id: "default",      assetName: nil,              label: "Originale"),
+        AppIconOption(id: "AppIconPurple", assetName: "AppIconPurple", label: "Viola"),
+        AppIconOption(id: "AppIconWhite",  assetName: "AppIconWhite",  label: "Bianca"),
+        AppIconOption(id: "AppIconGray",   assetName: "AppIconGray",   label: "Grigia"),
+    ]
+
+    private var selectedId: String {
+        currentIcon ?? "default"
+    }
+
+    var body: some View {
+        ZStack {
+            bg.ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                // Header
+                HStack {
+                    Button { dismiss() } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 38, height: 38)
+                            .glassEffect(.regular, in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .contentShape(Circle())
+                    Spacer()
+                }
+                .padding(.bottom, 32)
+
+                VStack(spacing: 6) {
+                    Text("Icona App")
+                        .font(.title.bold())
+                        .foregroundStyle(.white)
+                    Text("Scegli lo stile che preferisci")
+                        .font(.subheadline)
+                        .foregroundStyle(.white.opacity(0.45))
+                }
+                .padding(.bottom, 40)
+
+                // Griglia icone 2×2
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 20) {
+                    ForEach(icons) { option in
+                        IconOptionCell(
+                            option: option,
+                            isSelected: selectedId == option.id
+                        ) {
+                            applyIcon(option)
+                        }
+                    }
+                }
+
+                Spacer()
+            }
+            .padding(.horizontal, 28)
+            .padding(.top, 20)
+        }
+        .navigationBarBackButtonHidden(true)
+        .toolbarVisibility(.hidden, for: .navigationBar)
+    }
+
+    private func applyIcon(_ option: AppIconOption) {
+        let iconName: String? = option.id == "default" ? nil : option.id
+        guard UIApplication.shared.supportsAlternateIcons else { return }
+        UIApplication.shared.setAlternateIconName(iconName) { error in
+            if error == nil {
+                currentIcon = iconName
+            }
+        }
+    }
+}
+
+struct IconOptionCell: View {
+    let option: AppIconOption
+    let isSelected: Bool
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            VStack(spacing: 12) {
+                // Preview icona
+                Group {
+                    if let asset = option.assetName,
+                       let uiImg = UIImage(named: asset) ?? UIImage(contentsOfFile: Bundle.main.path(forResource: asset, ofType: nil) ?? "") {
+                        Image(uiImage: uiImg)
+                            .resizable()
+                            .scaledToFill()
+                    } else {
+                        Image("AppLogo")
+                            .resizable()
+                            .scaledToFill()
+                    }
+                }
+                .frame(width: 80, height: 80)
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(isSelected ? Color.white : Color.clear, lineWidth: 2.5)
+                )
+                .shadow(color: .black.opacity(0.3), radius: 8, y: 4)
+
+                Text(option.label)
+                    .font(.system(size: 14, weight: isSelected ? .semibold : .regular))
+                    .foregroundStyle(isSelected ? .white : .white.opacity(0.55))
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
+            .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .opacity(isSelected ? 1 : 0.8)
+        }
+        .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .buttonStyle(.plain)
+    }
+}
+
 // MARK: - Placeholder views (da implementare)
 
 struct ShoppingListView: View {
@@ -329,34 +458,85 @@ struct CalendarView: View {
 
 struct ProfileView: View {
     @State private var auth = AuthManager.shared
+    @State private var navigateToIconPicker = false
     private let bg = Color(red: 28/255, green: 28/255, blue: 30/255)
 
     var body: some View {
-        ZStack {
-            bg.ignoresSafeArea()
-            VStack(spacing: 24) {
-                Image("AppLogo")
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: 72, height: 72)
-                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        NavigationStack {
+            ZStack {
+                bg.ignoresSafeArea()
 
-                Text(auth.currentUser?.email?
-                    .replacingOccurrences(of: "@simply.app", with: "") ?? "")
-                    .font(.title2.bold())
-                    .foregroundStyle(.white)
+                VStack(spacing: 28) {
+                    Spacer()
 
-                Button {
-                    auth.logout()
-                } label: {
-                    Text("Esci")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .frame(width: 160, height: 48)
-                        .background(Capsule().stroke(Color.white.opacity(0.25), lineWidth: 1))
+                    // Avatar + nome
+                    VStack(spacing: 14) {
+                        Image("AppLogo")
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 80, height: 80)
+                            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+
+                        Text(auth.currentUser?.email?
+                            .replacingOccurrences(of: "@simply.app", with: "") ?? "")
+                            .font(.title2.bold())
+                            .foregroundStyle(.white)
+                    }
+
+                    Spacer()
+
+                    // Azioni
+                    VStack(spacing: 12) {
+                        // Icona App
+                        NavigationLink(destination: IconPickerView()) {
+                            HStack {
+                                Image(systemName: "app.badge")
+                                    .font(.system(size: 17))
+                                    .foregroundStyle(.white.opacity(0.8))
+                                    .frame(width: 28)
+                                Text("Icona App")
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundStyle(.white)
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundStyle(.white.opacity(0.35))
+                            }
+                            .padding(.horizontal, 20)
+                            .frame(height: 54)
+                            .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        }
+                        .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .buttonStyle(.plain)
+
+                        // Esci
+                        Button {
+                            auth.logout()
+                        } label: {
+                            HStack {
+                                Image(systemName: "rectangle.portrait.and.arrow.right")
+                                    .font(.system(size: 17))
+                                    .foregroundStyle(.red.opacity(0.85))
+                                    .frame(width: 28)
+                                Text("Esci")
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundStyle(.red.opacity(0.85))
+                                Spacer()
+                            }
+                            .padding(.horizontal, 20)
+                            .frame(height: 54)
+                            .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        }
+                        .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.horizontal, 28)
+
+                    Spacer()
+                        .frame(height: 20)
                 }
-                .contentShape(Capsule())
             }
+            .toolbarVisibility(.hidden, for: .navigationBar)
         }
     }
 }
