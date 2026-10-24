@@ -12,9 +12,41 @@
 		E80000000000000000000003 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E80000000000000000000013 /* Assets.xcassets */; };
 		E80000000000000000000004 /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E80000000000000000000015 /* AuthManager.swift */; };
 		E80000000000000000000005 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = E80000000000000000000016 /* GoogleService-Info.plist */; };
-		E80000000000000000000006 /* AppIconPurple.png in Resources */ = {isa = PBXBuildFile; fileRef = E80000000000000000000017 /* AppIconPurple.png */; };
-		E80000000000000000000007 /* AppIconWhite.png in Resources */ = {isa = PBXBuildFile; fileRef = E80000000000000000000018 /* AppIconWhite.png */; };
-		E80000000000000000000008 /* AppIconGray.png in Resources */ = {isa = PBXBuildFile; fileRef = E80000000000000000000019 /* AppIconGray.png */; };
+		A80000000000000000000001 /* simply_black.png in Resources */ = {isa = PBXBuildFile; fileRef = F80000000000000000000001 /* simply_black.png */; };
+		A80000000000000000000002 /* simply_black60x60@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = F80000000000000000000002 /* simply_black60x60@2x.png */; };
+		A80000000000000000000003 /* simply_black60x60@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = F80000000000000000000003 /* simply_black60x60@3x.png */; };
+		A80000000000000000000004 /* simply_black76x76@2x~ipad.png in Resources */ = {isa = PBXBuildFile; fileRef = F80000000000000000000004 /* simply_black76x76@2x~ipad.png */; };
+		A80000000000000000000005 /* simply_black83.5x83.5@2x~ipad.png in Resources */ = {isa = PBXBuildFile; fileRef = F80000000000000000000005 /* simply_black83.5x83.5@2x~ipad.png */; };
+		A80000000000000000000006 /* simply_black@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = F80000000000000000000006 /* simply_black@2x.png */; };
+		A80000000000000000000007 /* simply_black@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = F80000000000000000000007 /* simply_black@3x.png */; };
+		A80000000000000000000008 /* simply_green.png in Resources */ = {isa = PBXBuildFile; fileRef = F80000000000000000000008 /* simply_green.png */; };
+		A80000000000000000000009 /* simply_green60x60@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = F80000000000000000000009 /* simply_green60x60@2x.png */; };
+		A8000000000000000000000A /* simply_green60x60@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = F8000000000000000000000A /* simply_green60x60@3x.png */; };
+		A8000000000000000000000B /* simply_green76x76@2x~ipad.png in Resources */ = {isa = PBXBuildFile; fileRef = F8000000000000000000000B /* simply_green76x76@2x~ipad.png */; };
+		A8000000000000000000000C /* simply_green83.5x83.5@2x~ipad.png in Resources */ = {isa = PBXBuildFile; fileRef = F8000000000000000000000C /* simply_green83.5x83.5@2x~ipad.png */; };
+		A8000000000000000000000D /* simply_green@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = F8000000000000000000000D /* simply_green@2x.png */; };
+		A8000000000000000000000E /* simply_green@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = F8000000000000000000000E /* simply_green@3x.png */; };
+		A8000000000000000000000F /* simply_orange.png in Resources */ = {isa = PBXBuildFile; fileRef = F8000000000000000000000F /* simply_orange.png */; };
+		A80000000000000000000010 /* simply_orange60x60@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = F80000000000000000000010 /* simply_orange60x60@2x.png */; };
+		A80000000000000000000011 /* simply_orange60x60@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = F80000000000000000000011 /* simply_orange60x60@3x.png */; };
+		A80000000000000000000012 /* simply_orange76x76@2x~ipad.png in Resources */ = {isa = PBXBuildFile; fileRef = F80000000000000000000012 /* simply_orange76x76@2x~ipad.png */; };
+		A80000000000000000000013 /* simply_orange83.5x83.5@2x~ipad.png in Resources */ = {isa = PBXBuildFile; fileRef = F80000000000000000000013 /* simply_orange83.5x83.5@2x~ipad.png */; };
+		A80000000000000000000014 /* simply_orange@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = F80000000000000000000014 /* simply_orange@2x.png */; };
+		A80000000000000000000015 /* simply_orange@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = F80000000000000000000015 /* simply_orange@3x.png */; };
+		A80000000000000000000016 /* simply_purple.png in Resources */ = {isa = PBXBuildFile; fileRef = F80000000000000000000016 /* simply_purple.png */; };
+		A80000000000000000000017 /* simply_purple60x60@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = F80000000000000000000017 /* simply_purple60x60@2x.png */; };
+		A80000000000000000000018 /* simply_purple60x60@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = F80000000000000000000018 /* simply_purple60x60@3x.png */; };
+		A80000000000000000000019 /* simply_purple76x76@2x~ipad.png in Resources */ = {isa = PBXBuildFile; fileRef = F80000000000000000000019 /* simply_purple76x76@2x~ipad.png */; };
+		A8000000000000000000001A /* simply_purple83.5x83.5@2x~ipad.png in Resources */ = {isa = PBXBuildFile; fileRef = F8000000000000000000001A /* simply_purple83.5x83.5@2x~ipad.png */; };
+		A8000000000000000000001B /* simply_purple@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = F8000000000000000000001B /* simply_purple@2x.png */; };
+		A8000000000000000000001C /* simply_purple@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = F8000000000000000000001C /* simply_purple@3x.png */; };
+		A8000000000000000000001D /* simply_white.png in Resources */ = {isa = PBXBuildFile; fileRef = F8000000000000000000001D /* simply_white.png */; };
+		A8000000000000000000001E /* simply_white60x60@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = F8000000000000000000001E /* simply_white60x60@2x.png */; };
+		A8000000000000000000001F /* simply_white60x60@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = F8000000000000000000001F /* simply_white60x60@3x.png */; };
+		A80000000000000000000020 /* simply_white76x76@2x~ipad.png in Resources */ = {isa = PBXBuildFile; fileRef = F80000000000000000000020 /* simply_white76x76@2x~ipad.png */; };
+		A80000000000000000000021 /* simply_white83.5x83.5@2x~ipad.png in Resources */ = {isa = PBXBuildFile; fileRef = F80000000000000000000021 /* simply_white83.5x83.5@2x~ipad.png */; };
+		A80000000000000000000022 /* simply_white@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = F80000000000000000000022 /* simply_white@2x.png */; };
+		A80000000000000000000023 /* simply_white@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = F80000000000000000000023 /* simply_white@3x.png */; };
 		FBFBFB0000000000000000A1 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = FBFBFB0000000000000000B1 /* FirebaseAuth */; };
 		FBFBFB0000000000000000A2 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = FBFBFB0000000000000000B2 /* FirebaseFirestore */; };
 		FBFBFB0000000000000000A3 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = FBFBFB0000000000000000B3 /* FirebaseCore */; };
@@ -54,9 +86,41 @@
 		E80000000000000000000014 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		E80000000000000000000015 /* AuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManager.swift; sourceTree = "<group>"; };
 		E80000000000000000000016 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
-		E80000000000000000000017 /* AppIconPurple.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = AppIconPurple.png; sourceTree = "<group>"; };
-		E80000000000000000000018 /* AppIconWhite.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = AppIconWhite.png; sourceTree = "<group>"; };
-		E80000000000000000000019 /* AppIconGray.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = AppIconGray.png; sourceTree = "<group>"; };
+		F80000000000000000000001 /* simply_black.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "simply_black.png"; sourceTree = "<group>"; };
+		F80000000000000000000002 /* simply_black60x60@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "simply_black60x60@2x.png"; sourceTree = "<group>"; };
+		F80000000000000000000003 /* simply_black60x60@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "simply_black60x60@3x.png"; sourceTree = "<group>"; };
+		F80000000000000000000004 /* simply_black76x76@2x~ipad.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "simply_black76x76@2x~ipad.png"; sourceTree = "<group>"; };
+		F80000000000000000000005 /* simply_black83.5x83.5@2x~ipad.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "simply_black83.5x83.5@2x~ipad.png"; sourceTree = "<group>"; };
+		F80000000000000000000006 /* simply_black@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "simply_black@2x.png"; sourceTree = "<group>"; };
+		F80000000000000000000007 /* simply_black@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "simply_black@3x.png"; sourceTree = "<group>"; };
+		F80000000000000000000008 /* simply_green.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "simply_green.png"; sourceTree = "<group>"; };
+		F80000000000000000000009 /* simply_green60x60@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "simply_green60x60@2x.png"; sourceTree = "<group>"; };
+		F8000000000000000000000A /* simply_green60x60@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "simply_green60x60@3x.png"; sourceTree = "<group>"; };
+		F8000000000000000000000B /* simply_green76x76@2x~ipad.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "simply_green76x76@2x~ipad.png"; sourceTree = "<group>"; };
+		F8000000000000000000000C /* simply_green83.5x83.5@2x~ipad.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "simply_green83.5x83.5@2x~ipad.png"; sourceTree = "<group>"; };
+		F8000000000000000000000D /* simply_green@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "simply_green@2x.png"; sourceTree = "<group>"; };
+		F8000000000000000000000E /* simply_green@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "simply_green@3x.png"; sourceTree = "<group>"; };
+		F8000000000000000000000F /* simply_orange.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "simply_orange.png"; sourceTree = "<group>"; };
+		F80000000000000000000010 /* simply_orange60x60@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "simply_orange60x60@2x.png"; sourceTree = "<group>"; };
+		F80000000000000000000011 /* simply_orange60x60@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "simply_orange60x60@3x.png"; sourceTree = "<group>"; };
+		F80000000000000000000012 /* simply_orange76x76@2x~ipad.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "simply_orange76x76@2x~ipad.png"; sourceTree = "<group>"; };
+		F80000000000000000000013 /* simply_orange83.5x83.5@2x~ipad.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "simply_orange83.5x83.5@2x~ipad.png"; sourceTree = "<group>"; };
+		F80000000000000000000014 /* simply_orange@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "simply_orange@2x.png"; sourceTree = "<group>"; };
+		F80000000000000000000015 /* simply_orange@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "simply_orange@3x.png"; sourceTree = "<group>"; };
+		F80000000000000000000016 /* simply_purple.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "simply_purple.png"; sourceTree = "<group>"; };
+		F80000000000000000000017 /* simply_purple60x60@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "simply_purple60x60@2x.png"; sourceTree = "<group>"; };
+		F80000000000000000000018 /* simply_purple60x60@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "simply_purple60x60@3x.png"; sourceTree = "<group>"; };
+		F80000000000000000000019 /* simply_purple76x76@2x~ipad.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "simply_purple76x76@2x~ipad.png"; sourceTree = "<group>"; };
+		F8000000000000000000001A /* simply_purple83.5x83.5@2x~ipad.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "simply_purple83.5x83.5@2x~ipad.png"; sourceTree = "<group>"; };
+		F8000000000000000000001B /* simply_purple@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "simply_purple@2x.png"; sourceTree = "<group>"; };
+		F8000000000000000000001C /* simply_purple@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "simply_purple@3x.png"; sourceTree = "<group>"; };
+		F8000000000000000000001D /* simply_white.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "simply_white.png"; sourceTree = "<group>"; };
+		F8000000000000000000001E /* simply_white60x60@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "simply_white60x60@2x.png"; sourceTree = "<group>"; };
+		F8000000000000000000001F /* simply_white60x60@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "simply_white60x60@3x.png"; sourceTree = "<group>"; };
+		F80000000000000000000020 /* simply_white76x76@2x~ipad.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "simply_white76x76@2x~ipad.png"; sourceTree = "<group>"; };
+		F80000000000000000000021 /* simply_white83.5x83.5@2x~ipad.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "simply_white83.5x83.5@2x~ipad.png"; sourceTree = "<group>"; };
+		F80000000000000000000022 /* simply_white@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "simply_white@2x.png"; sourceTree = "<group>"; };
+		F80000000000000000000023 /* simply_white@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "simply_white@3x.png"; sourceTree = "<group>"; };
 		W800000000000000000000010 /* SimplyWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SimplyWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		W800000000000000000000011 /* SimplyWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimplyWidgets.swift; sourceTree = "<group>"; };
 		W800000000000000000000014 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -101,9 +165,41 @@
 				E80000000000000000000013 /* Assets.xcassets */,
 				E80000000000000000000014 /* Info.plist */,
 				E80000000000000000000016 /* GoogleService-Info.plist */,
-				E80000000000000000000017 /* AppIconPurple.png */,
-				E80000000000000000000018 /* AppIconWhite.png */,
-				E80000000000000000000019 /* AppIconGray.png */,
+				F80000000000000000000001 /* simply_black.png */,
+				F80000000000000000000002 /* simply_black60x60@2x.png */,
+				F80000000000000000000003 /* simply_black60x60@3x.png */,
+				F80000000000000000000004 /* simply_black76x76@2x~ipad.png */,
+				F80000000000000000000005 /* simply_black83.5x83.5@2x~ipad.png */,
+				F80000000000000000000006 /* simply_black@2x.png */,
+				F80000000000000000000007 /* simply_black@3x.png */,
+				F80000000000000000000008 /* simply_green.png */,
+				F80000000000000000000009 /* simply_green60x60@2x.png */,
+				F8000000000000000000000A /* simply_green60x60@3x.png */,
+				F8000000000000000000000B /* simply_green76x76@2x~ipad.png */,
+				F8000000000000000000000C /* simply_green83.5x83.5@2x~ipad.png */,
+				F8000000000000000000000D /* simply_green@2x.png */,
+				F8000000000000000000000E /* simply_green@3x.png */,
+				F8000000000000000000000F /* simply_orange.png */,
+				F80000000000000000000010 /* simply_orange60x60@2x.png */,
+				F80000000000000000000011 /* simply_orange60x60@3x.png */,
+				F80000000000000000000012 /* simply_orange76x76@2x~ipad.png */,
+				F80000000000000000000013 /* simply_orange83.5x83.5@2x~ipad.png */,
+				F80000000000000000000014 /* simply_orange@2x.png */,
+				F80000000000000000000015 /* simply_orange@3x.png */,
+				F80000000000000000000016 /* simply_purple.png */,
+				F80000000000000000000017 /* simply_purple60x60@2x.png */,
+				F80000000000000000000018 /* simply_purple60x60@3x.png */,
+				F80000000000000000000019 /* simply_purple76x76@2x~ipad.png */,
+				F8000000000000000000001A /* simply_purple83.5x83.5@2x~ipad.png */,
+				F8000000000000000000001B /* simply_purple@2x.png */,
+				F8000000000000000000001C /* simply_purple@3x.png */,
+				F8000000000000000000001D /* simply_white.png */,
+				F8000000000000000000001E /* simply_white60x60@2x.png */,
+				F8000000000000000000001F /* simply_white60x60@3x.png */,
+				F80000000000000000000020 /* simply_white76x76@2x~ipad.png */,
+				F80000000000000000000021 /* simply_white83.5x83.5@2x~ipad.png */,
+				F80000000000000000000022 /* simply_white@2x.png */,
+				F80000000000000000000023 /* simply_white@3x.png */,
 			);
 			path = Simply;
 			sourceTree = "<group>";
@@ -216,9 +312,41 @@
 			files = (
 				E80000000000000000000003 /* Assets.xcassets in Resources */,
 				E80000000000000000000005 /* GoogleService-Info.plist in Resources */,
-				E80000000000000000000006 /* AppIconPurple.png in Resources */,
-				E80000000000000000000007 /* AppIconWhite.png in Resources */,
-				E80000000000000000000008 /* AppIconGray.png in Resources */,
+				A80000000000000000000001 /* simply_black.png in Resources */,
+				A80000000000000000000002 /* simply_black60x60@2x.png in Resources */,
+				A80000000000000000000003 /* simply_black60x60@3x.png in Resources */,
+				A80000000000000000000004 /* simply_black76x76@2x~ipad.png in Resources */,
+				A80000000000000000000005 /* simply_black83.5x83.5@2x~ipad.png in Resources */,
+				A80000000000000000000006 /* simply_black@2x.png in Resources */,
+				A80000000000000000000007 /* simply_black@3x.png in Resources */,
+				A80000000000000000000008 /* simply_green.png in Resources */,
+				A80000000000000000000009 /* simply_green60x60@2x.png in Resources */,
+				A8000000000000000000000A /* simply_green60x60@3x.png in Resources */,
+				A8000000000000000000000B /* simply_green76x76@2x~ipad.png in Resources */,
+				A8000000000000000000000C /* simply_green83.5x83.5@2x~ipad.png in Resources */,
+				A8000000000000000000000D /* simply_green@2x.png in Resources */,
+				A8000000000000000000000E /* simply_green@3x.png in Resources */,
+				A8000000000000000000000F /* simply_orange.png in Resources */,
+				A80000000000000000000010 /* simply_orange60x60@2x.png in Resources */,
+				A80000000000000000000011 /* simply_orange60x60@3x.png in Resources */,
+				A80000000000000000000012 /* simply_orange76x76@2x~ipad.png in Resources */,
+				A80000000000000000000013 /* simply_orange83.5x83.5@2x~ipad.png in Resources */,
+				A80000000000000000000014 /* simply_orange@2x.png in Resources */,
+				A80000000000000000000015 /* simply_orange@3x.png in Resources */,
+				A80000000000000000000016 /* simply_purple.png in Resources */,
+				A80000000000000000000017 /* simply_purple60x60@2x.png in Resources */,
+				A80000000000000000000018 /* simply_purple60x60@3x.png in Resources */,
+				A80000000000000000000019 /* simply_purple76x76@2x~ipad.png in Resources */,
+				A8000000000000000000001A /* simply_purple83.5x83.5@2x~ipad.png in Resources */,
+				A8000000000000000000001B /* simply_purple@2x.png in Resources */,
+				A8000000000000000000001C /* simply_purple@3x.png in Resources */,
+				A8000000000000000000001D /* simply_white.png in Resources */,
+				A8000000000000000000001E /* simply_white60x60@2x.png in Resources */,
+				A8000000000000000000001F /* simply_white60x60@3x.png in Resources */,
+				A80000000000000000000020 /* simply_white76x76@2x~ipad.png in Resources */,
+				A80000000000000000000021 /* simply_white83.5x83.5@2x~ipad.png in Resources */,
+				A80000000000000000000022 /* simply_white@2x.png in Resources */,
+				A80000000000000000000023 /* simply_white@3x.png in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -270,7 +398,7 @@
 				CODE_SIGN_IDENTITY = "";
 				CODE_SIGNING_REQUIRED = NO;
 				CODE_SIGNING_ALLOWED = NO;
-				CURRENT_PROJECT_VERSION = 26;
+				CURRENT_PROJECT_VERSION = 27;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Simply/Info.plist;
@@ -279,7 +407,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.6.5;
+				MARKETING_VERSION = 0.6.6;
 				PRODUCT_BUNDLE_IDENTIFIER = com.saturnmoon.simply;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -297,7 +425,7 @@
 				CODE_SIGN_IDENTITY = "";
 				CODE_SIGNING_REQUIRED = NO;
 				CODE_SIGNING_ALLOWED = NO;
-				CURRENT_PROJECT_VERSION = 26;
+				CURRENT_PROJECT_VERSION = 27;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Simply/Info.plist;
@@ -306,7 +434,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.6.5;
+				MARKETING_VERSION = 0.6.6;
 				PRODUCT_BUNDLE_IDENTIFIER = com.saturnmoon.simply;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -386,7 +514,7 @@
 				CODE_SIGN_IDENTITY = "";
 				CODE_SIGNING_REQUIRED = NO;
 				CODE_SIGNING_ALLOWED = NO;
-				CURRENT_PROJECT_VERSION = 26;
+				CURRENT_PROJECT_VERSION = 27;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = SimplyWidgets/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
@@ -395,7 +523,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 0.6.5;
+				MARKETING_VERSION = 0.6.6;
 				PRODUCT_BUNDLE_IDENTIFIER = com.saturnmoon.simply.SimplyWidgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -412,7 +540,7 @@
 				CODE_SIGN_IDENTITY = "";
 				CODE_SIGNING_REQUIRED = NO;
 				CODE_SIGNING_ALLOWED = NO;
-				CURRENT_PROJECT_VERSION = 26;
+				CURRENT_PROJECT_VERSION = 27;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = SimplyWidgets/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
@@ -421,7 +549,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 0.6.5;
+				MARKETING_VERSION = 0.6.6;
 				PRODUCT_BUNDLE_IDENTIFIER = com.saturnmoon.simply.SimplyWidgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;

@@ -17,9 +17,9 @@
 	<key>CFBundlePackageType</key>
 	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.6.5</string>
+	<string>0.6.6</string>
 	<key>CFBundleVersion</key>
-	<string>26</string>
+	<string>27</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>
@@ -55,33 +55,127 @@
 		</dict>
 		<key>CFBundleAlternateIcons</key>
 		<dict>
-			<key>AppIconPurple</key>
+			<key>simply_black</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIconPurple</string>
+					<string>simply_black</string>
+					<string>simply_black60x60</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
-			<key>AppIconWhite</key>
+			<key>simply_white</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIconWhite</string>
+					<string>simply_white</string>
+					<string>simply_white60x60</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
-			<key>AppIconGray</key>
+			<key>simply_purple</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIconGray</string>
+					<string>simply_purple</string>
+					<string>simply_purple60x60</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
-			</dict>		</dict>
+			</dict>
+			<key>simply_green</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>simply_green</string>
+					<string>simply_green60x60</string>
+				</array>
+				<key>UIPrerenderedIcon</key>
+				<false/>
+			</dict>
+			<key>simply_orange</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>simply_orange</string>
+					<string>simply_orange60x60</string>
+				</array>
+				<key>UIPrerenderedIcon</key>
+				<false/>
+			</dict>
+		</dict>
+	</dict>
+	<key>CFBundleIcons~ipad</key>
+	<dict>
+		<key>CFBundlePrimaryIcon</key>
+		<dict>
+			<key>CFBundleIconFiles</key>
+			<array>
+				<string>AppIcon</string>
+			</array>
+			<key>CFBundleIconName</key>
+			<string>AppIcon</string>
+		</dict>
+		<key>CFBundleAlternateIcons</key>
+		<dict>
+			<key>simply_black</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>simply_black</string>
+					<string>simply_black76x76</string>
+					<string>simply_black83.5x83.5</string>
+				</array>
+				<key>UIPrerenderedIcon</key>
+				<false/>
+			</dict>
+			<key>simply_white</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>simply_white</string>
+					<string>simply_white76x76</string>
+					<string>simply_white83.5x83.5</string>
+				</array>
+				<key>UIPrerenderedIcon</key>
+				<false/>
+			</dict>
+			<key>simply_purple</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>simply_purple</string>
+					<string>simply_purple76x76</string>
+					<string>simply_purple83.5x83.5</string>
+				</array>
+				<key>UIPrerenderedIcon</key>
+				<false/>
+			</dict>
+			<key>simply_green</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>simply_green</string>
+					<string>simply_green76x76</string>
+					<string>simply_green83.5x83.5</string>
+				</array>
+				<key>UIPrerenderedIcon</key>
+				<false/>
+			</dict>
+			<key>simply_orange</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>simply_orange</string>
+					<string>simply_orange76x76</string>
+					<string>simply_orange83.5x83.5</string>
+				</array>
+				<key>UIPrerenderedIcon</key>
+				<false/>
+			</dict>
+		</dict>
 	</dict>
 </dict>
 </plist>

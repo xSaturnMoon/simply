@@ -1889,7 +1889,7 @@ struct ClockSettingsView: View {
 
 struct AppIconOption: Identifiable {
     let id: String
-    let assetName: String?
+    let assetName: String
     let label: String
 }
 
@@ -1898,20 +1898,34 @@ struct IconPickerView: View {
     @State private var currentIcon: String? = UIApplication.shared.alternateIconName
     private let bg = Color.black
     private let icons: [AppIconOption] = [
-        AppIconOption(id: "default",       assetName: nil,              label: "Originale"),
-        AppIconOption(id: "AppIconPurple", assetName: "AppIconPurple",  label: "Viola"),
-        AppIconOption(id: "AppIconWhite",  assetName: "AppIconWhite",   label: "Bianca"),
-        AppIconOption(id: "AppIconGray",   assetName: "AppIconGray",    label: "Grigia"),
+        AppIconOption(id: "default",       assetName: "simply_black",  label: "Originale"),
+        AppIconOption(id: "simply_white",  assetName: "simply_white",  label: "Bianca"),
+        AppIconOption(id: "simply_purple", assetName: "simply_purple", label: "Viola"),
+        AppIconOption(id: "simply_green",  assetName: "simply_green",  label: "Verde"),
+        AppIconOption(id: "simply_orange", assetName: "simply_orange", label: "Arancione"),
     ]
-    private var selectedId: String { currentIcon ?? "default" }
+
+    private var selectedId: String {
+        if let icon = currentIcon {
+            if icon.contains("purple") { return "simply_purple" }
+            if icon.contains("white") { return "simply_white" }
+            if icon.contains("green") { return "simply_green" }
+            if icon.contains("orange") { return "simply_orange" }
+            if icon.contains("black") { return "default" }
+            return icon
+        }
+        return "default"
+    }
 
     var body: some View {
         ZStack {
             bg.ignoresSafeArea()
             VStack(spacing: 0) {
+                // Header
                 HStack {
                     Button { dismiss() } label: {
-                        Image(systemName: "chevron.left").font(.system(size: 17, weight: .semibold))
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 17, weight: .semibold))
                             .foregroundStyle(.white)
                             .frame(width: 38, height: 38)
                             .background(.ultraThinMaterial)
@@ -1921,29 +1935,54 @@ struct IconPickerView: View {
                     .buttonStyle(.plain)
                     .contentShape(Circle())
                     Spacer()
-                }.padding(.bottom, 32)
-                VStack(spacing: 6) {
-                    Text("Icona App").font(.title.bold()).foregroundStyle(.white)
-                    Text("Scegli lo stile che preferisci").font(.subheadline).foregroundStyle(.white.opacity(0.45))
-                }.padding(.bottom, 40)
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 20) {
-                    ForEach(icons) { option in
-                        IconOptionCell(option: option, isSelected: selectedId == option.id) { applyIcon(option) }
-                    }
                 }
-                Spacer()
+                .padding(.horizontal, 24)
+                .padding(.top, 20)
+                .padding(.bottom, 28)
+
+                VStack(spacing: 6) {
+                    Text("Icona App")
+                        .font(.title.bold())
+                        .foregroundStyle(.white)
+                    Text("Scegli lo stile che preferisci")
+                        .font(.subheadline)
+                        .foregroundStyle(.white.opacity(0.45))
+                }
+                .padding(.bottom, 36)
+
+                ScrollView(showsIndicators: false) {
+                    LazyVGrid(columns: [GridItem(.flexible(), spacing: 16), GridItem(.flexible(), spacing: 16)], spacing: 18) {
+                        ForEach(icons) { option in
+                            IconOptionCell(option: option, isSelected: selectedId == option.id) {
+                                applyIcon(option)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 24)
+                }
             }
-            .padding(.horizontal, 28).padding(.top, 20)
         }
         .navigationBarBackButtonHidden(true)
         .toolbarVisibility(.hidden, for: .navigationBar)
     }
 
     private func applyIcon(_ option: AppIconOption) {
-        let name: String? = option.id == "default" ? nil : option.id
+        guard selectedId != option.id else { return }
+        let name: String? = (option.id == "default" || option.id == "simply_black") ? nil : option.id
         guard UIApplication.shared.supportsAlternateIcons else { return }
+
         UIApplication.shared.setAlternateIconName(name) { err in
-            if err == nil { currentIcon = name }
+            DispatchQueue.main.async {
+                if let err = err {
+                    print("Errore cambio icona: \(err.localizedDescription)")
+                } else {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                        currentIcon = name
+                    }
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                }
+            }
         }
     }
 }
@@ -1956,29 +1995,36 @@ struct IconOptionCell: View {
     var body: some View {
         Button(action: onTap) {
             VStack(spacing: 12) {
-                Group {
-                    if let asset = option.assetName, let uiImg = UIImage(named: asset) {
-                        Image(uiImage: uiImg).resizable().scaledToFill()
-                    } else {
-                        Image("AppLogo").resizable().scaledToFill()
+                Image(option.assetName)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 78, height: 78)
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .stroke(isSelected ? Color.blue : Color.white.opacity(0.12), lineWidth: isSelected ? 3 : 1)
+                    )
+                    .shadow(color: .black.opacity(0.4), radius: 8, y: 4)
+
+                HStack(spacing: 6) {
+                    Text(option.label)
+                        .font(.system(size: 14, weight: isSelected ? .bold : .medium))
+                        .foregroundStyle(isSelected ? .white : .white.opacity(0.65))
+
+                    if isSelected {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(.blue)
                     }
                 }
-                .frame(width: 80, height: 80)
-                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(isSelected ? Color.white : Color.clear, lineWidth: 2.5))
-                .shadow(color: .black.opacity(0.3), radius: 8, y: 4)
-
-                Text(option.label)
-                    .font(.system(size: 14, weight: isSelected ? .semibold : .regular))
-                    .foregroundStyle(isSelected ? .white : .white.opacity(0.55))
             }
-            .frame(maxWidth: .infinity).padding(.vertical, 16)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
             .background(.ultraThinMaterial)
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                    .stroke(isSelected ? Color.blue.opacity(0.5) : Color.white.opacity(0.08), lineWidth: 1)
             )
             .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         }
