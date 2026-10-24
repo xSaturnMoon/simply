@@ -43,19 +43,39 @@ struct LandingView: View {
                 VStack(spacing: 12) {
                     NavigationLink(destination: RegisterView()) {
                         AuthPill(label: "Registrati con username", style: .primary)
-                    }.contentShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .contentShape(Capsule())
+
                     NavigationLink(destination: LoginView()) {
                         AuthPill(label: "Accedi", style: .outlined)
-                    }.contentShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .contentShape(Capsule())
+
                     Rectangle().fill(Color.white.opacity(0.1)).frame(height: 1).padding(.vertical, 4)
+
                     Button {} label: {
-                        HStack(spacing: 10) {
-                            Image(systemName: "apple.logo").font(.system(size: 17, weight: .medium)).offset(y: -1)
-                            Text("Continua con Apple").font(.system(size: 16, weight: .semibold))
+                        ZStack {
+                            Capsule()
+                                .fill(Color.white.opacity(0.001))
+                                .overlay(Capsule().stroke(Color.white.opacity(0.25), lineWidth: 1))
+
+                            HStack(spacing: 10) {
+                                Image(systemName: "apple.logo")
+                                    .font(.system(size: 17, weight: .medium))
+                                    .offset(y: -1)
+                                Text("Continua con Apple")
+                                    .font(.system(size: 16, weight: .semibold))
+                            }
+                            .foregroundStyle(.white)
                         }
-                        .foregroundStyle(.white).frame(maxWidth: .infinity).frame(height: 54)
-                        .background(Capsule().stroke(Color.white.opacity(0.25), lineWidth: 1))
-                    }.contentShape(Capsule())
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 54)
+                        .contentShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .contentShape(Capsule())
                 }
                 .padding(.horizontal, 28)
                 Spacer()
@@ -84,7 +104,9 @@ struct RegisterView: View {
                     Button { dismiss() } label: {
                         Image(systemName: "chevron.left").font(.system(size: 17, weight: .semibold))
                             .foregroundStyle(.white).frame(width: 38, height: 38).glassEffect(.regular, in: Circle())
-                    }.buttonStyle(.plain).contentShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .contentShape(Circle())
                     Spacer()
                 }.padding(.bottom, 32)
                 VStack(spacing: 14) {
@@ -108,7 +130,10 @@ struct RegisterView: View {
                 } label: {
                     if auth.isLoading { AuthPill(label: "", style: .primary, isLoading: true) }
                     else { AuthPill(label: "Crea Account", style: .primary) }
-                }.contentShape(Capsule()).disabled(auth.isLoading)
+                }
+                .buttonStyle(.plain)
+                .contentShape(Capsule())
+                .disabled(auth.isLoading)
                 Spacer()
             }
             .padding(.horizontal, 28).padding(.top, 20)
@@ -137,7 +162,9 @@ struct LoginView: View {
                     Button { dismiss() } label: {
                         Image(systemName: "chevron.left").font(.system(size: 17, weight: .semibold))
                             .foregroundStyle(.white).frame(width: 38, height: 38).glassEffect(.regular, in: Circle())
-                    }.buttonStyle(.plain).contentShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .contentShape(Circle())
                     Spacer()
                 }.padding(.bottom, 32)
                 VStack(spacing: 14) {
@@ -160,7 +187,10 @@ struct LoginView: View {
                 } label: {
                     if auth.isLoading { AuthPill(label: "", style: .primary, isLoading: true) }
                     else { AuthPill(label: "Accedi", style: .primary) }
-                }.contentShape(Capsule()).disabled(auth.isLoading)
+                }
+                .buttonStyle(.plain)
+                .contentShape(Capsule())
+                .disabled(auth.isLoading)
                 Spacer()
             }
             .padding(.horizontal, 28).padding(.top, 20)
@@ -182,7 +212,7 @@ struct MainAppView: View {
             Tab("Calendario", systemImage: "calendar") {
                 CalendarView()
             }
-            Tab("Impostazioni", systemImage: "gearshape") {
+            Tab("Profilo", systemImage: "person.circle") {
                 ProfileView()
             }
         }
@@ -194,13 +224,9 @@ struct MainAppView: View {
 
 struct ShoppingListView: View {
     @State private var auth = AuthManager.shared
-    @State private var showingShare = false
-    @State private var showingFriendsLists = false
     @State private var quickItemName = ""
     @State private var selectedQty: String = "ND"
     @FocusState private var isNameFocused: Bool
-    @State private var showingClearAllAlert = false
-    @State private var showingClearCheckedAlert = false
 
     let quantityPresets = ["ND", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
 
@@ -225,18 +251,64 @@ struct ShoppingListView: View {
                     .ignoresSafeArea()
 
                 List {
-                    // Stat cards
-                    Section {
-                        HStack(spacing: 15) {
-                            statCard(title: "Da comprare", value: "\(activeItems.count)", icon: "cart.fill", color: .orange)
-                            statCard(title: "Completati", value: "\(completedItems.count)", icon: "checkmark.seal.fill", color: .green)
+                    // Barra amici: appare solo se hai amici aggiunti
+                    if !auth.friends.isEmpty {
+                        Section {
+                            VStack(alignment: .leading, spacing: 10) {
+                                Text("LISTA AMICI")
+                                    .font(.caption.bold())
+                                    .foregroundStyle(.secondary)
+                                    .padding(.leading, 4)
+
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 10) {
+                                        ForEach(auth.friends) { friend in
+                                            NavigationLink(destination: FriendDetailView(friend: friend)) {
+                                                HStack(spacing: 10) {
+                                                    ZStack {
+                                                        Circle()
+                                                            .fill(Color.blue.opacity(0.15))
+                                                            .frame(width: 34, height: 34)
+                                                        Image(systemName: "person.2.fill")
+                                                            .font(.system(size: 15))
+                                                            .foregroundColor(.blue)
+                                                    }
+
+                                                    VStack(alignment: .leading, spacing: 2) {
+                                                        Text(friend.nickname)
+                                                            .font(.system(size: 15, weight: .semibold))
+                                                            .foregroundStyle(.primary)
+                                                        Text("Vedi spesa")
+                                                            .font(.caption2)
+                                                            .foregroundStyle(.secondary)
+                                                    }
+
+                                                    Image(systemName: "chevron.right")
+                                                        .font(.system(size: 12, weight: .semibold))
+                                                        .foregroundStyle(.secondary)
+                                                        .padding(.leading, 2)
+                                                }
+                                                .padding(.horizontal, 14)
+                                                .padding(.vertical, 10)
+                                                .background(.ultraThinMaterial)
+                                                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                                                .overlay(
+                                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                                        .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                                                )
+                                                .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                                            }
+                                            .buttonStyle(.plain)
+                                        }
+                                    }
+                                    .padding(.vertical, 2)
+                                }
+                            }
+                            .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 8, trailing: 20))
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
                         }
-                        .listRowInsets(EdgeInsets())
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
-                        .padding(.vertical, 10)
                     }
-                    .padding(.horizontal)
 
                     // Widget Aggiunta Rapida
                     Section {
@@ -270,20 +342,25 @@ struct ShoppingListView: View {
                                                 selectedQty = preset
                                                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                             } label: {
-                                                Text(preset)
-                                                    .font(.system(size: 15, weight: .bold, design: .rounded))
-                                                    .frame(width: 44, height: 44)
-                                                    .background(
-                                                        selectedQty == preset ?
-                                                        Color.blue :
-                                                        Color(uiColor: .secondarySystemGroupedBackground)
-                                                    )
-                                                    .foregroundColor(selectedQty == preset ? .white : .primary)
-                                                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                                                    .overlay(
-                                                        RoundedRectangle(cornerRadius: 12)
-                                                            .stroke(selectedQty == preset ? Color.blue.opacity(0.8) : Color.white.opacity(0.12), lineWidth: 1)
-                                                    )
+                                                ZStack {
+                                                    RoundedRectangle(cornerRadius: 12)
+                                                        .fill(
+                                                            selectedQty == preset ?
+                                                            Color.blue :
+                                                            Color(uiColor: .secondarySystemGroupedBackground)
+                                                        )
+
+                                                    Text(preset)
+                                                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                                                        .foregroundColor(selectedQty == preset ? .white : .primary)
+                                                }
+                                                .frame(width: 44, height: 44)
+                                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                                                .overlay(
+                                                    RoundedRectangle(cornerRadius: 12)
+                                                        .stroke(selectedQty == preset ? Color.blue.opacity(0.8) : Color.white.opacity(0.12), lineWidth: 1)
+                                                )
+                                                .contentShape(RoundedRectangle(cornerRadius: 12))
                                             }
                                             .buttonStyle(.plain)
                                         }
@@ -305,12 +382,19 @@ struct ShoppingListView: View {
                                         .foregroundColor(isQuickAddValid ? .white : .secondary)
                                 }
                                 .frame(width: 58)
+                                .frame(maxHeight: .infinity)
+                                .contentShape(RoundedRectangle(cornerRadius: 14))
                             }
                             .disabled(!isQuickAddValid)
                             .buttonStyle(.plain)
                         }
                         .padding(12)
-                        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .background(.ultraThinMaterial)
+                        .clipShape(RoundedRectangle(cornerRadius: 18))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 18)
+                                .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                        )
                         .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 12, trailing: 20))
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
@@ -338,19 +422,15 @@ struct ShoppingListView: View {
                             Section {
                                 ForEach(activeItems) { item in
                                     ShoppingItemCard(item: item) {
-                                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                                            auth.toggleMyItem(item)
-                                        }
-                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                        auth.toggleMyItem(item)
+                                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                                     }
                                     .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 6, trailing: 20))
                                     .listRowBackground(Color.clear)
                                     .listRowSeparator(.hidden)
                                     .swipeActions(edge: .trailing) {
                                         Button(role: .destructive) {
-                                            withAnimation {
-                                                auth.deleteMyItem(item)
-                                            }
+                                            auth.deleteMyItem(item)
                                         } label: {
                                             Label("Elimina", systemImage: "trash")
                                         }
@@ -379,10 +459,8 @@ struct ShoppingListView: View {
 
                                 ForEach(completedItems) { item in
                                     ShoppingItemCard(item: item) {
-                                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                                            auth.toggleMyItem(item)
-                                        }
-                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                        auth.toggleMyItem(item)
+                                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                                     }
                                     .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 6, trailing: 20))
                                     .listRowBackground(Color.clear)
@@ -390,9 +468,7 @@ struct ShoppingListView: View {
                                     .opacity(0.6)
                                     .swipeActions(edge: .trailing) {
                                         Button(role: .destructive) {
-                                            withAnimation {
-                                                auth.deleteMyItem(item)
-                                            }
+                                            auth.deleteMyItem(item)
                                         } label: {
                                             Label("Elimina", systemImage: "trash")
                                         }
@@ -410,68 +486,11 @@ struct ShoppingListView: View {
                 }
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
+                .animation(.spring(response: 0.45, dampingFraction: 0.75), value: activeItems)
+                .animation(.spring(response: 0.45, dampingFraction: 0.75), value: completedItems)
             }
             .navigationTitle("Spesa")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    HStack(spacing: 15) {
-                        Button(role: .destructive) {
-                            showingClearAllAlert = true
-                        } label: {
-                            Image(systemName: "trash.fill")
-                                .foregroundColor(.red)
-                        }
-
-                        Button {
-                            showingClearCheckedAlert = true
-                        } label: {
-                            Image(systemName: "checkmark.circle.badge.xmark.fill")
-                                .foregroundColor(.orange)
-                        }
-                    }
-                }
-
-                ToolbarItem(placement: .topBarTrailing) {
-                    HStack(spacing: 15) {
-                        Button {
-                            showingFriendsLists.toggle()
-                        } label: {
-                            Image(systemName: "folder.badge.person.crop")
-                                .foregroundColor(.blue)
-                        }
-
-                        Button {
-                            showingShare.toggle()
-                        } label: {
-                            Image(systemName: "person.badge.plus")
-                                .foregroundColor(.blue)
-                        }
-                    }
-                }
-            }
-            .alert("Elimina tutto?", isPresented: $showingClearAllAlert) {
-                Button("Annulla", role: .cancel) {}
-                Button("Elimina Tutto", role: .destructive) {
-                    auth.clearAllMyItems()
-                }
-            } message: {
-                Text("Sei sicuro/a di voler eliminare tutti i prodotti dalla lista?")
-            }
-            .alert("Elimina completati?", isPresented: $showingClearCheckedAlert) {
-                Button("Annulla", role: .cancel) {}
-                Button("Elimina Completati", role: .destructive) {
-                    auth.clearCompletedMyItems()
-                }
-            } message: {
-                Text("Sei sicuro/a di voler eliminare solo i prodotti già completati?")
-            }
-            .sheet(isPresented: $showingShare) {
-                ShareView(isPresented: $showingShare)
-            }
-            .sheet(isPresented: $showingFriendsLists) {
-                FriendsListView(isPresented: $showingFriendsLists)
-            }
         }
     }
 
@@ -480,30 +499,10 @@ struct ShoppingListView: View {
         guard !name.isEmpty else { return }
         let qty = (selectedQty == "ND") ? "" : selectedQty
 
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
-            auth.addMyItem(name: name, quantity: qty)
-            quickItemName = ""
-            isNameFocused = true
-        }
+        auth.addMyItem(name: name, quantity: qty)
+        quickItemName = ""
+        isNameFocused = true
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-    }
-
-    func statCard(title: String, value: String, icon: String, color: Color) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Image(systemName: icon)
-                    .foregroundColor(color)
-                Text(title)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            Text(value)
-                .font(.title2.bold())
-                .foregroundStyle(.primary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding()
-        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
 
@@ -514,175 +513,41 @@ struct ShoppingItemCard: View {
     let onToggle: () -> Void
 
     var body: some View {
-        HStack(spacing: 15) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(item.name)
-                    .font(.headline)
-                    .strikethrough(false)
-                    .foregroundStyle(item.completed ? .secondary : .primary)
+        Button(action: onToggle) {
+            HStack(spacing: 15) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(item.name)
+                        .font(.headline)
+                        .strikethrough(false)
+                        .foregroundStyle(item.completed ? .secondary : .primary)
 
-                if !item.quantity.isEmpty {
-                    Text(item.quantity)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    if !item.quantity.isEmpty {
+                        Text(item.quantity)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
-            }
 
-            Spacer()
+                Spacer()
 
-            Button {
-                onToggle()
-            } label: {
                 Image(systemName: item.completed ? "checkmark.circle.fill" : "circle")
                     .font(.title2)
                     .foregroundColor(item.completed ? .green : .secondary)
+                    .contentTransition(.symbolEffect(.replace))
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .padding()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.ultraThinMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: 18))
+            .overlay(
+                RoundedRectangle(cornerRadius: 18)
+                    .stroke(Color.white.opacity(0.1), lineWidth: 1)
+            )
+            .contentShape(RoundedRectangle(cornerRadius: 18))
         }
-        .padding()
-        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-    }
-}
-
-// MARK: - Share & Add Friend View
-
-struct ShareView: View {
-    @Binding var isPresented: Bool
-    @State private var auth = AuthManager.shared
-    @State private var friendCode = ""
-    @State private var friendName = ""
-    @State private var showCopied = false
-
-    var displayCode: String {
-        auth.friendCode
-    }
-
-    var body: some View {
-        NavigationStack {
-            List {
-                Section {
-                    VStack(spacing: 16) {
-                        Text(displayCode.isEmpty ? "Caricamento..." : displayCode)
-                            .font(.system(size: 26, weight: .bold, design: .monospaced))
-                            .tracking(4)
-                            .foregroundColor(.primary)
-                            .padding(.top, 8)
-
-                        Button {
-                            UIPasteboard.general.string = displayCode
-                            withAnimation { showCopied = true }
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                                withAnimation { showCopied = false }
-                            }
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        } label: {
-                            Label(
-                                showCopied ? "Copiato!" : "Copia Codice",
-                                systemImage: showCopied ? "checkmark.circle.fill" : "doc.on.doc"
-                            )
-                            .font(.subheadline.bold())
-                            .foregroundColor(showCopied ? .green : .blue)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(Capsule().fill(showCopied ? Color.green.opacity(0.12) : Color.blue.opacity(0.12)))
-                        }
-
-                        Text("Condividi il tuo codice con amici o parenti per collegare le liste.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.center)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
-                }
-
-                Section("Aggiungi Amico") {
-                    TextField("Codice Amico (6 cifre)", text: $friendCode)
-                        .keyboardType(.numberPad)
-                    TextField("Nome o Soprannome", text: $friendName)
-
-                    if let error = auth.errorMessage {
-                        Text(error).font(.caption).foregroundColor(.red)
-                    }
-
-                    Button("Aggiungi Amico") {
-                        Task {
-                            await auth.addFriend(code: friendCode, nickname: friendName)
-                            if auth.errorMessage == nil {
-                                friendCode = ""
-                                friendName = ""
-                                UINotificationFeedbackGenerator().notificationOccurred(.success)
-                                isPresented = false
-                            }
-                        }
-                    }
-                    .disabled(friendCode.count != 6 || friendName.trimmingCharacters(in: .whitespaces).isEmpty)
-                }
-            }
-            .navigationTitle("Condivisione")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Chiudi") { isPresented = false }
-                }
-            }
-        }
-    }
-}
-
-// MARK: - Friends List Sheet
-
-struct FriendsListView: View {
-    @Binding var isPresented: Bool
-    @State private var auth = AuthManager.shared
-
-    var body: some View {
-        NavigationStack {
-            List {
-                if auth.friends.isEmpty {
-                    Section {
-                        Text("Non hai ancora aggiunto amici.")
-                            .foregroundStyle(.secondary)
-                    }
-                    .listRowBackground(Color.clear)
-                } else {
-                    ForEach(auth.friends) { friend in
-                        NavigationLink {
-                            FriendDetailView(friend: friend)
-                        } label: {
-                            HStack(spacing: 12) {
-                                Image(systemName: "person.circle.fill")
-                                    .foregroundColor(.blue)
-                                    .font(.title2)
-
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(friend.nickname)
-                                        .font(.headline)
-                                    Text("#\(friend.friendCode)")
-                                        .font(.caption.monospaced())
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                        }
-                        .swipeActions(edge: .trailing) {
-                            Button(role: .destructive) {
-                                auth.removeFriend(friend.id)
-                            } label: {
-                                Label("Elimina", systemImage: "trash")
-                            }
-                        }
-                    }
-                }
-            }
-            .navigationTitle("Liste Amici")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Chiudi") { isPresented = false }
-                }
-            }
-        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -730,10 +595,8 @@ struct FriendDetailView: View {
                         Section {
                             ForEach(activeItems) { item in
                                 ShoppingItemCard(item: item) {
-                                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                                        auth.toggleFriendItem(item, friendUid: friend.id)
-                                    }
-                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    auth.toggleFriendItem(item, friendUid: friend.id)
+                                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                                 }
                                 .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 6, trailing: 20))
                                 .listRowBackground(Color.clear)
@@ -761,10 +624,8 @@ struct FriendDetailView: View {
 
                             ForEach(completedItems) { item in
                                 ShoppingItemCard(item: item) {
-                                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                                        auth.toggleFriendItem(item, friendUid: friend.id)
-                                    }
-                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    auth.toggleFriendItem(item, friendUid: friend.id)
+                                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                                 }
                                 .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 6, trailing: 20))
                                 .listRowBackground(Color.clear)
@@ -777,6 +638,8 @@ struct FriendDetailView: View {
             }
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
+            .animation(.spring(response: 0.45, dampingFraction: 0.75), value: activeItems)
+            .animation(.spring(response: 0.45, dampingFraction: 0.75), value: completedItems)
         }
         .navigationTitle(friend.nickname)
     }
@@ -791,11 +654,10 @@ struct CalendarView: View {
     }
 }
 
-// MARK: - Impostazioni / Profile
+// MARK: - Profile
 
 struct ProfileView: View {
     @State private var auth = AuthManager.shared
-    @State private var showingShare = false
     private let bg = Color(red: 28/255, green: 28/255, blue: 30/255)
 
     var body: some View {
@@ -825,7 +687,9 @@ struct ProfileView: View {
                                     Image(systemName: "doc.on.doc")
                                         .font(.system(size: 12))
                                         .foregroundStyle(.white.opacity(0.4))
-                                }.buttonStyle(.plain)
+                                }
+                                .buttonStyle(.plain)
+                                .contentShape(Rectangle())
                             }
                         }
                     }
@@ -834,32 +698,161 @@ struct ProfileView: View {
 
                     // Bottoni
                     VStack(spacing: 12) {
-                        Button {
-                            showingShare = true
-                        } label: {
+                        NavigationLink(destination: FriendsView()) {
                             AuthPill(label: "Amici", style: .outlined)
                         }
+                        .buttonStyle(.plain)
                         .contentShape(Capsule())
 
                         NavigationLink(destination: IconPickerView()) {
                             AuthPill(label: "Icona", style: .outlined)
-                        }.contentShape(Capsule()).buttonStyle(.plain)
+                        }
+                        .buttonStyle(.plain)
+                        .contentShape(Capsule())
 
                         Button { auth.logout() } label: {
                             AuthPill(label: "Esci", style: .outlined)
-                        }.contentShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .contentShape(Capsule())
                     }
                     .padding(.horizontal, 28)
 
                     Spacer().frame(height: 20)
                 }
             }
-            .navigationTitle("Impostazioni")
-            .navigationBarTitleDisplayMode(.inline)
-            .sheet(isPresented: $showingShare) {
-                ShareView(isPresented: $showingShare)
+            .toolbarVisibility(.hidden, for: .navigationBar)
+        }
+    }
+}
+
+// MARK: - Friends View
+
+struct FriendsView: View {
+    @State private var auth = AuthManager.shared
+    @State private var codeInput = ""
+    @State private var nicknameInput = ""
+    @State private var showAdd = false
+    @FocusState private var codeFocused: Bool
+    @Environment(\.dismiss) private var dismiss
+    private let bg = Color(red: 28/255, green: 28/255, blue: 30/255)
+
+    var body: some View {
+        ZStack {
+            bg.ignoresSafeArea()
+            VStack(spacing: 0) {
+
+                // Header
+                HStack {
+                    Button { dismiss() } label: {
+                        Image(systemName: "chevron.left").font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(.white).frame(width: 38, height: 38).glassEffect(.regular, in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .contentShape(Circle())
+                    Spacer()
+                    Button {
+                        withAnimation(.spring(response: 0.35)) { showAdd.toggle() }
+                        if showAdd { codeFocused = true }
+                    } label: {
+                        Image(systemName: showAdd ? "xmark" : "person.badge.plus")
+                            .font(.system(size: 16, weight: .semibold)).foregroundStyle(.white)
+                            .frame(width: 38, height: 38).glassEffect(.regular, in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .contentShape(Circle())
+                }.padding(.horizontal, 24).padding(.top, 20).padding(.bottom, 28)
+
+                Text("Amici").font(.title.bold()).foregroundStyle(.white)
+                    .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 24).padding(.bottom, 20)
+
+                // Form aggiungi amico
+                if showAdd {
+                    VStack(spacing: 10) {
+                        AuthField(icon: "number", placeholder: "Codice a 6 cifre", text: $codeInput)
+                            .keyboardType(.numberPad)
+                        AuthField(icon: "person", placeholder: "Come vuoi chiamarlo?", text: $nicknameInput)
+
+                        if let msg = auth.errorMessage {
+                            Text(msg).font(.footnote).foregroundStyle(.red.opacity(0.9))
+                                .multilineTextAlignment(.center)
+                                .transition(.opacity)
+                        }
+
+                        Button {
+                            Task {
+                                await auth.addFriend(code: codeInput, nickname: nicknameInput)
+                                if auth.errorMessage == nil {
+                                    codeInput = ""; nicknameInput = ""
+                                    withAnimation { showAdd = false }
+                                }
+                            }
+                        } label: {
+                            if auth.isLoading { AuthPill(label: "", style: .primary, isLoading: true) }
+                            else { AuthPill(label: "Aggiungi", style: .primary) }
+                        }
+                        .buttonStyle(.plain)
+                        .contentShape(Capsule())
+                        .disabled(auth.isLoading)
+                    }
+                    .padding(.horizontal, 24).padding(.bottom, 20)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                }
+
+                // Lista amici
+                if auth.friends.isEmpty && !showAdd {
+                    Spacer()
+                    VStack(spacing: 10) {
+                        Image(systemName: "person.2").font(.system(size: 44, weight: .light))
+                            .foregroundStyle(.white.opacity(0.2))
+                        Text("Nessun amico aggiunto").font(.system(size: 16))
+                            .foregroundStyle(.white.opacity(0.3))
+                        Text("Tocca + per aggiungerne uno").font(.system(size: 14))
+                            .foregroundStyle(.white.opacity(0.2))
+                    }
+                    Spacer()
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: 10) {
+                            ForEach(auth.friends) { friend in
+                                HStack(spacing: 16) {
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text(friend.nickname)
+                                            .font(.system(size: 16, weight: .medium))
+                                            .foregroundStyle(.white)
+                                        Text("#\(friend.friendCode)")
+                                            .font(.system(size: 13, design: .monospaced))
+                                            .foregroundStyle(.white.opacity(0.4))
+                                    }
+                                    Spacer()
+                                    Button { auth.removeFriend(friend.id) } label: {
+                                        Image(systemName: "person.badge.minus")
+                                            .font(.system(size: 16))
+                                            .frame(width: 44, height: 44)
+                                            .foregroundStyle(.red.opacity(0.6))
+                                            .contentShape(Rectangle())
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                                .padding(.horizontal, 18).frame(minHeight: 60)
+                                .background(.ultraThinMaterial)
+                                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                        .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                                )
+                            }
+                        }
+                        .padding(.horizontal, 24).padding(.bottom, 24)
+                    }
+                }
             }
         }
+        .navigationBarBackButtonHidden(true)
+        .toolbarVisibility(.hidden, for: .navigationBar)
+        .animation(.easeInOut(duration: 0.2), value: showAdd)
+        .animation(.easeInOut(duration: 0.2), value: auth.errorMessage)
+        .onAppear { auth.errorMessage = nil }
     }
 }
 
@@ -891,7 +884,9 @@ struct IconPickerView: View {
                     Button { dismiss() } label: {
                         Image(systemName: "chevron.left").font(.system(size: 17, weight: .semibold))
                             .foregroundStyle(.white).frame(width: 38, height: 38).glassEffect(.regular, in: Circle())
-                    }.buttonStyle(.plain).contentShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .contentShape(Circle())
                     Spacer()
                 }.padding(.bottom, 32)
                 VStack(spacing: 6) {
@@ -946,9 +941,14 @@ struct IconOptionCell: View {
                     .foregroundStyle(isSelected ? .white : .white.opacity(0.55))
             }
             .frame(maxWidth: .infinity).padding(.vertical, 16)
-            .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .background(.ultraThinMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(Color.white.opacity(0.1), lineWidth: 1)
+            )
+            .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         }
-        .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .buttonStyle(.plain)
     }
 }
@@ -963,18 +963,26 @@ struct AuthPill: View {
     var isLoading: Bool = false
 
     var body: some View {
-        Group {
-            if isLoading { ProgressView().tint(style == .primary ? .black : .white) }
-            else { Text(label).font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(style == .primary ? .black : .white) }
-        }
-        .frame(maxWidth: .infinity).frame(height: 54)
-        .background {
+        ZStack {
             switch style {
-            case .primary: Capsule().fill(Color.white)
-            case .outlined: Capsule().stroke(Color.white.opacity(0.25), lineWidth: 1)
+            case .primary:
+                Capsule().fill(Color.white)
+            case .outlined:
+                Capsule()
+                    .fill(Color.white.opacity(0.001))
+                    .overlay(Capsule().stroke(Color.white.opacity(0.25), lineWidth: 1))
+            }
+
+            if isLoading {
+                ProgressView().tint(style == .primary ? .black : .white)
+            } else {
+                Text(label)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(style == .primary ? .black : .white)
             }
         }
+        .frame(maxWidth: .infinity)
+        .frame(height: 54)
         .contentShape(Capsule())
     }
 }
@@ -998,6 +1006,7 @@ struct AuthField: View {
         }
         .padding(.horizontal, 18).frame(height: 54)
         .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
 
@@ -1022,10 +1031,14 @@ struct AuthSecureField: View {
             Button { show.toggle() } label: {
                 Image(systemName: show ? "eye.slash" : "eye").foregroundStyle(.white.opacity(0.45))
                     .contentTransition(.symbolEffect(.replace))
-            }.buttonStyle(.plain)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
         }
         .padding(.horizontal, 18).frame(height: 54)
         .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
 

@@ -233,7 +233,7 @@ class AuthManager {
             .addSnapshotListener { [weak self] snap, _ in
                 guard let self, let docs = snap?.documents else { return }
                 Task { @MainActor in
-                    self.myItems = docs.compactMap { doc -> ShoppingItem? in
+                    let newItems = docs.compactMap { doc -> ShoppingItem? in
                         let d = doc.data()
                         guard let name = d["name"] as? String else { return nil }
                         return ShoppingItem(
@@ -244,6 +244,11 @@ class AuthManager {
                             createdAt: (d["createdAt"] as? Timestamp)?.dateValue() ?? Date()
                         )
                     }
+                    if self.myItems != newItems {
+                        withAnimation(.spring(response: 0.45, dampingFraction: 0.75)) {
+                            self.myItems = newItems
+                        }
+                    }
                 }
             }
     }
@@ -252,19 +257,38 @@ class AuthManager {
         guard let uid = currentUser?.uid else { return }
         let t = name.trimmingCharacters(in: .whitespaces)
         guard !t.isEmpty else { return }
+        
+        let tempId = UUID().uuidString
+        let tempItem = ShoppingItem(id: tempId, name: t, quantity: quantity, completed: false, createdAt: Date())
+        
+        withAnimation(.spring(response: 0.45, dampingFraction: 0.75)) {
+            myItems.insert(tempItem, at: 0)
+        }
+
         Task {
-            try? await db.collection("users").document(uid)
+            if let ref = try? await db.collection("users").document(uid)
                 .collection("shopping_items").addDocument(data: [
                     "name": t,
                     "quantity": quantity,
                     "completed": false,
                     "createdAt": FieldValue.serverTimestamp()
-                ])
+                ]) {
+                if let idx = self.myItems.firstIndex(where: { $0.id == tempId }) {
+                    self.myItems[idx].id = ref.documentID
+                }
+            }
         }
     }
 
     func toggleMyItem(_ item: ShoppingItem) {
         guard let uid = currentUser?.uid else { return }
+        
+        if let idx = myItems.firstIndex(where: { $0.id == item.id }) {
+            withAnimation(.spring(response: 0.45, dampingFraction: 0.75)) {
+                myItems[idx].completed.toggle()
+            }
+        }
+
         Task {
             try? await db.collection("users").document(uid)
                 .collection("shopping_items").document(item.id)
@@ -274,32 +298,14 @@ class AuthManager {
 
     func deleteMyItem(_ item: ShoppingItem) {
         guard let uid = currentUser?.uid else { return }
+        
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+            myItems.removeAll { $0.id == item.id }
+        }
+
         Task {
             try? await db.collection("users").document(uid)
                 .collection("shopping_items").document(item.id).delete()
-        }
-    }
-
-    func clearAllMyItems() {
-        guard let uid = currentUser?.uid else { return }
-        Task {
-            let snap = try? await db.collection("users").document(uid).collection("shopping_items").getDocuments()
-            guard let docs = snap?.documents else { return }
-            for doc in docs {
-                try? await doc.reference.delete()
-            }
-        }
-    }
-
-    func clearCompletedMyItems() {
-        guard let uid = currentUser?.uid else { return }
-        Task {
-            let snap = try? await db.collection("users").document(uid).collection("shopping_items")
-                .whereField("completed", isEqualTo: true).getDocuments()
-            guard let docs = snap?.documents else { return }
-            for doc in docs {
-                try? await doc.reference.delete()
-            }
         }
     }
 
@@ -313,7 +319,7 @@ class AuthManager {
             .addSnapshotListener { [weak self] snap, _ in
                 guard let self, let docs = snap?.documents else { return }
                 Task { @MainActor in
-                    self.friendsItems[friendUid] = docs.compactMap { doc -> ShoppingItem? in
+                    let newItems = docs.compactMap { doc -> ShoppingItem? in
                         let d = doc.data()
                         guard let name = d["name"] as? String else { return nil }
                         return ShoppingItem(
@@ -324,11 +330,23 @@ class AuthManager {
                             createdAt: (d["createdAt"] as? Timestamp)?.dateValue() ?? Date()
                         )
                     }
+                    if self.friendsItems[friendUid] != newItems {
+                        withAnimation(.spring(response: 0.45, dampingFraction: 0.75)) {
+                            self.friendsItems[friendUid] = newItems
+                        }
+                    }
                 }
             }
     }
 
     func toggleFriendItem(_ item: ShoppingItem, friendUid: String) {
+        if var list = friendsItems[friendUid], let idx = list.firstIndex(where: { $0.id == item.id }) {
+            withAnimation(.spring(response: 0.45, dampingFraction: 0.75)) {
+                list[idx].completed.toggle()
+                friendsItems[friendUid] = list
+            }
+        }
+
         Task {
             try? await db.collection("users").document(friendUid)
                 .collection("shopping_items").document(item.id)
