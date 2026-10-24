@@ -14,6 +14,20 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
+               BlueprintIdentifier = "W800000000000000000000040"
+               BuildableName = "SimplyWidgets.appex"
+               BlueprintName = "SimplyWidgets"
+               ReferencedContainer = "container:Simply.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "YES"
+            buildForProfiling = "YES"
+            buildForArchiving = "YES"
+            buildForAnalyzing = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
                BlueprintIdentifier = "E80000000000000000000040"
                BuildableName = "Simply.app"
                BlueprintName = "Simply"

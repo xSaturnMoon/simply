@@ -42,6 +42,16 @@ jobs:
         run: |
           mkdir -p Payload
           cp -R build/Build/Products/Release-iphoneos/Simply.app Payload/
+          mkdir -p Payload/Simply.app/PlugIns
+          if [ -d "build/Build/Products/Release-iphoneos/SimplyWidgets.appex" ]; then
+            echo "Found SimplyWidgets.appex in Release-iphoneos, copying to PlugIns..."
+            cp -R build/Build/Products/Release-iphoneos/SimplyWidgets.appex Payload/Simply.app/PlugIns/
+          else
+            echo "Searching for SimplyWidgets.appex in build directory..."
+            find build -name "SimplyWidgets.appex" -exec cp -R {} Payload/Simply.app/PlugIns/ \;
+          fi
+          echo "=== Contenuto di Payload/Simply.app/PlugIns ==="
+          ls -la Payload/Simply.app/PlugIns/ || echo "No PlugIns found!"
           zip -r Simply.ipa Payload
           ls -lh Simply.ipa
 
