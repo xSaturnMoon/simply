@@ -436,12 +436,161 @@ struct IconOptionCell: View {
 
 struct ShoppingListView: View {
     private let bg = Color(red: 28/255, green: 28/255, blue: 30/255)
+
+    @State private var items: [ShoppingItem] = []
+    @State private var newItemText = ""
+    @State private var showInput = false
+    @FocusState private var inputFocused: Bool
+
     var body: some View {
         ZStack {
             bg.ignoresSafeArea()
-            Text("Lista della Spesa")
-                .foregroundStyle(.white)
+
+            VStack(spacing: 0) {
+                // Header
+                HStack {
+                    Text("Lista")
+                        .font(.system(size: 28, weight: .bold))
+                        .foregroundStyle(.white)
+                    Spacer()
+                    Button {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                            showInput.toggle()
+                        }
+                        if showInput { inputFocused = true }
+                    } label: {
+                        Image(systemName: showInput ? "xmark" : "plus")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 36, height: 36)
+                            .glassEffect(.regular, in: Circle())
+                    }
+                    .contentShape(Circle())
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 16)
+                .padding(.bottom, 20)
+
+                // Campo aggiunta
+                if showInput {
+                    HStack(spacing: 12) {
+                        TextField(
+                            "",
+                            text: $newItemText,
+                            prompt: Text("Aggiungi elemento...").foregroundStyle(.white.opacity(0.4))
+                        )
+                        .foregroundStyle(.white)
+                        .focused($inputFocused)
+                        .submitLabel(.done)
+                        .onSubmit { addItem() }
+
+                        Button { addItem() } label: {
+                            Image(systemName: "arrow.up.circle.fill")
+                                .font(.system(size: 28))
+                                .foregroundStyle(newItemText.isEmpty ? .white.opacity(0.25) : .white)
+                        }
+                        .disabled(newItemText.trimmingCharacters(in: .whitespaces).isEmpty)
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.horizontal, 18)
+                    .frame(height: 54)
+                    .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 16)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                }
+
+                // Lista
+                if items.isEmpty {
+                    Spacer()
+                    VStack(spacing: 12) {
+                        Image(systemName: "cart")
+                            .font(.system(size: 44, weight: .light))
+                            .foregroundStyle(.white.opacity(0.2))
+                        Text("Nessun elemento")
+                            .font(.system(size: 16))
+                            .foregroundStyle(.white.opacity(0.3))
+                    }
+                    Spacer()
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: 10) {
+                            ForEach($items) { $item in
+                                ShoppingRow(item: $item) {
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        items.removeAll { $0.id == item.id }
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 24)
+                        .padding(.bottom, 24)
+                    }
+                }
+            }
         }
+        .animation(.easeInOut(duration: 0.2), value: showInput)
+    }
+
+    private func addItem() {
+        let text = newItemText.trimmingCharacters(in: .whitespaces)
+        guard !text.isEmpty else { return }
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+            items.insert(ShoppingItem(name: text), at: 0)
+        }
+        newItemText = ""
+        inputFocused = true
+    }
+}
+
+// MARK: - Shopping Item Model
+
+struct ShoppingItem: Identifiable {
+    let id = UUID()
+    var name: String
+    var completed: Bool = false
+}
+
+// MARK: - Shopping Row
+
+struct ShoppingRow: View {
+    @Binding var item: ShoppingItem
+    let onDelete: () -> Void
+
+    var body: some View {
+        HStack(spacing: 16) {
+            // Checkbox
+            Button {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    item.completed.toggle()
+                }
+            } label: {
+                Image(systemName: item.completed ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 22))
+                    .foregroundStyle(item.completed ? .white : .white.opacity(0.35))
+                    .contentTransition(.symbolEffect(.replace))
+            }
+            .buttonStyle(.plain)
+
+            // Nome
+            Text(item.name)
+                .font(.system(size: 16))
+                .foregroundStyle(item.completed ? .white.opacity(0.35) : .white)
+                .strikethrough(item.completed, color: .white.opacity(0.35))
+                .animation(.easeInOut(duration: 0.2), value: item.completed)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            // Elimina
+            Button(action: onDelete) {
+                Image(systemName: "trash")
+                    .font(.system(size: 15))
+                    .foregroundStyle(.white.opacity(0.25))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 18)
+        .frame(minHeight: 54)
+        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
 
