@@ -645,12 +645,641 @@ struct FriendDetailView: View {
     }
 }
 
-// MARK: - Calendar (placeholder)
+// MARK: - Calendar Views (Bloom Style)
 
 struct CalendarView: View {
-    private let bg = Color(red: 28/255, green: 28/255, blue: 30/255)
+    @State private var auth = AuthManager.shared
+    @State private var showingAllReminders = false
+    @State private var selectedEvent: CalendarEvent?
+    @State private var currentMonth = Date()
+    @State private var selectedDate = Date()
+    @State private var showingAddEvent = false
+
     var body: some View {
-        ZStack { bg.ignoresSafeArea(); Text("Calendario").foregroundStyle(.white) }
+        NavigationStack {
+            ZStack {
+                Color(uiColor: .systemBackground)
+                    .ignoresSafeArea()
+
+                List {
+                    // SEZIONE 1: Mese con Frecce e Griglia Calendario
+                    Section {
+                        VStack(spacing: 14) {
+                            HStack {
+                                Button { changeMonth(by: -1) } label: {
+                                    Image(systemName: "chevron.left.circle.fill")
+                                        .font(.title2)
+                                        .foregroundColor(.secondary.opacity(0.6))
+                                        .frame(width: 44, height: 44)
+                                        .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+
+                                Spacer()
+
+                                Text(currentMonth.formatted(.dateTime.month(.wide).year().locale(Locale(identifier: "it_IT"))).capitalized)
+                                    .font(.title2.bold())
+                                    .foregroundStyle(.primary)
+
+                                Spacer()
+
+                                Button { changeMonth(by: 1) } label: {
+                                    Image(systemName: "chevron.right.circle.fill")
+                                        .font(.title2)
+                                        .foregroundColor(.secondary.opacity(0.6))
+                                        .frame(width: 44, height: 44)
+                                        .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            .padding(.horizontal, 4)
+
+                            CalendarMonthGrid(
+                                currentMonth: currentMonth,
+                                selectedDate: $selectedDate
+                            )
+                        }
+                        .listRowInsets(EdgeInsets(top: 10, leading: 16, bottom: 8, trailing: 16))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                    }
+
+                    // SEZIONE 2: Intestazione Agenda Giorno
+                    Section {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(selectedDate.formatted(.dateTime.weekday(.wide).locale(Locale(identifier: "it_IT"))).uppercased())
+                                    .font(.caption.bold())
+                                    .foregroundStyle(.secondary)
+
+                                HStack(spacing: 6) {
+                                    Text(selectedDate.formatted(.dateTime.day().month(.wide).locale(Locale(identifier: "it_IT"))).capitalized)
+                                        .font(.title3.bold())
+                                        .foregroundStyle(.primary)
+
+                                    if Calendar.current.isDateInToday(selectedDate) {
+                                        Text("Oggi")
+                                            .font(.caption2.bold())
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 2)
+                                            .background(Color.blue.opacity(0.15))
+                                            .foregroundColor(.blue)
+                                            .clipShape(Capsule())
+                                    }
+                                }
+                            }
+
+                            Spacer()
+
+                            Button {
+                                showingAddEvent = true
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "plus")
+                                    Text("Impegno")
+                                }
+                                .font(.subheadline.bold())
+                                .foregroundColor(.blue)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 8)
+                                .background(Color.blue.opacity(0.12))
+                                .clipShape(Capsule())
+                                .contentShape(Capsule())
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 4, trailing: 16))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                    }
+
+                    // SEZIONE 3: Lista Impegni o Empty State
+                    let events = auth.events(for: selectedDate)
+                    if events.isEmpty {
+                        Section {
+                            VStack(spacing: 12) {
+                                Image(systemName: "calendar.badge.clock")
+                                    .font(.system(size: 40))
+                                    .foregroundStyle(.secondary.opacity(0.7))
+                                    .padding(.top, 20)
+
+                                Text("Nessun impegno in programma")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+
+                                Button {
+                                    showingAddEvent = true
+                                } label: {
+                                    Text("+ Aggiungi Impegno")
+                                        .font(.subheadline.bold())
+                                        .padding(.horizontal, 16)
+                                        .padding(.vertical, 8)
+                                        .background(Color.blue.opacity(0.12))
+                                        .foregroundColor(.blue)
+                                        .clipShape(Capsule())
+                                        .contentShape(Capsule())
+                                }
+                                .buttonStyle(.plain)
+                                .padding(.bottom, 20)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .background(.ultraThinMaterial)
+                            .clipShape(RoundedRectangle(cornerRadius: 18))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 18)
+                                    .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                            )
+                            .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+                        }
+                    } else {
+                        Section {
+                            ForEach(events) { event in
+                                AppleEventCard(event: event) {
+                                    selectedEvent = event
+                                }
+                                .listRowInsets(EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 16))
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
+                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                    Button(role: .destructive) {
+                                        auth.deleteEvent(event)
+                                    } label: {
+                                        Label("Elimina", systemImage: "trash")
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Section {
+                        Spacer(minLength: 120)
+                    }
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+            }
+            .navigationTitle("Calendario")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button { showingAllReminders = true } label: {
+                        Image(systemName: "bell.fill").foregroundColor(.orange)
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                            currentMonth = Date()
+                            selectedDate = Date()
+                        }
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    } label: {
+                        Image(systemName: "calendar.badge.clock")
+                            .font(.title3)
+                            .foregroundColor(.blue)
+                    }
+                }
+            }
+            .sheet(isPresented: $showingAddEvent) {
+                AddEventView(isPresented: $showingAddEvent, initialDate: selectedDate)
+            }
+            .sheet(item: $selectedEvent) { event in
+                EditEventView(event: event)
+            }
+            .sheet(isPresented: $showingAllReminders) {
+                AllRemindersView(isPresented: $showingAllReminders)
+            }
+        }
+    }
+
+    func changeMonth(by value: Int) {
+        if let newMonth = Calendar.current.date(byAdding: .month, value: value, to: currentMonth) {
+            withAnimation(.easeInOut(duration: 0.22)) {
+                currentMonth = newMonth
+                let cal = Calendar.current
+                if !cal.isDate(selectedDate, equalTo: newMonth, toGranularity: .month) {
+                    if let firstDay = cal.date(from: cal.dateComponents([.year, .month], from: newMonth)) {
+                        selectedDate = firstDay
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - CalendarMonthGrid
+
+struct CalendarDaySlot: Identifiable {
+    let id: String
+    let date: Date?
+}
+
+struct CalendarMonthGrid: View {
+    let currentMonth: Date
+    @Binding var selectedDate: Date
+    @State private var auth = AuthManager.shared
+
+    let columns = Array(repeating: GridItem(.flexible(), spacing: 4), count: 7)
+    let weekdays = ["L", "M", "M", "G", "V", "S", "D"]
+
+    var body: some View {
+        VStack(spacing: 10) {
+            // Intestazione Giorni della Settimana
+            HStack {
+                ForEach(0..<7, id: \.self) { idx in
+                    Text(weekdays[idx])
+                        .font(.caption.bold())
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity)
+                }
+            }
+            .padding(.horizontal, 4)
+
+            // Griglia Giorni Mese
+            LazyVGrid(columns: columns, spacing: 8) {
+                ForEach(daysInMonthGrid(for: currentMonth)) { slot in
+                    if let date = slot.date {
+                        let isSelected = Calendar.current.isDate(date, inSameDayAs: selectedDate)
+                        let isToday = Calendar.current.isDateInToday(date)
+                        let hasEvents = auth.hasEvents(on: date)
+
+                        Button {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                                selectedDate = date
+                            }
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        } label: {
+                            VStack(spacing: 3) {
+                                Text("\(Calendar.current.component(.day, from: date))")
+                                    .font(.system(size: 16, weight: isSelected || isToday ? .bold : .medium, design: .rounded))
+                                    .foregroundColor(isSelected ? .white : (isToday ? .blue : .primary))
+
+                                // Pallino indicatore impegni
+                                Circle()
+                                    .fill(hasEvents ? (isSelected ? .white : Color.orange) : Color.clear)
+                                    .frame(width: 5, height: 5)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 42)
+                            .background(
+                                isSelected ?
+                                Color.blue :
+                                (isToday ? Color.blue.opacity(0.12) : Color.clear)
+                            )
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .contentShape(RoundedRectangle(cornerRadius: 12))
+                        }
+                        .buttonStyle(.plain)
+                    } else {
+                        Color.clear
+                            .frame(height: 42)
+                    }
+                }
+            }
+            .padding(.horizontal, 4)
+        }
+        .padding(14)
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(Color.white.opacity(0.1), lineWidth: 1)
+        )
+    }
+
+    private func daysInMonthGrid(for date: Date) -> [CalendarDaySlot] {
+        var cal = Calendar(identifier: .gregorian)
+        cal.firstWeekday = 2 // Lunedì
+        cal.locale = Locale(identifier: "it_IT")
+
+        guard let monthInterval = cal.dateInterval(of: .month, for: date) else { return [] }
+        let firstOfMonth = monthInterval.start
+
+        let weekdayOfFirst = cal.component(.weekday, from: firstOfMonth)
+        let leadingSpaces = (weekdayOfFirst - cal.firstWeekday + 7) % 7
+
+        var slots: [CalendarDaySlot] = []
+        for i in 0..<leadingSpaces {
+            slots.append(CalendarDaySlot(id: "empty_\(i)", date: nil))
+        }
+
+        guard let range = cal.range(of: .day, in: .month, for: date) else { return slots }
+        let year = cal.component(.year, from: date)
+        let month = cal.component(.month, from: date)
+        for day in range {
+            if let dayDate = cal.date(byAdding: .day, value: day - 1, to: firstOfMonth) {
+                slots.append(CalendarDaySlot(id: "day_\(year)_\(month)_\(day)", date: dayDate))
+            }
+        }
+        return slots
+    }
+}
+
+// MARK: - AppleEventCard
+
+struct AppleEventCard: View {
+    let event: CalendarEvent
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 12) {
+                // Orario
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(event.startTime.formatted(.dateTime.hour().minute()))
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                }
+                .frame(width: 55, alignment: .leading)
+
+                // Barra colorata verticale
+                Rectangle()
+                    .fill(event.isCompleted ? Color.green : Color.blue)
+                    .frame(width: 3.5, height: 38)
+                    .clipShape(Capsule())
+
+                // Titolo & Notifica
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(event.title)
+                        .font(.body.weight(.medium))
+                        .foregroundColor(event.isCompleted ? .secondary : .primary)
+                        .strikethrough(event.isCompleted)
+                        .lineLimit(2)
+
+                    if event.reminderEnabled {
+                        HStack(spacing: 4) {
+                            Image(systemName: "bell.fill")
+                                .font(.caption2)
+                                .foregroundColor(.orange)
+                            Text("Promemoria")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+
+                Spacer()
+
+                // Cerchietto completamento
+                Button {
+                    AuthManager.shared.toggleCompleteEvent(event)
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                } label: {
+                    Image(systemName: event.isCompleted ? "checkmark.circle.fill" : "circle")
+                        .font(.title2)
+                        .foregroundColor(event.isCompleted ? .green : .secondary)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(14)
+            .background(.ultraThinMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(Color.white.opacity(0.1), lineWidth: 1)
+            )
+            .contentShape(RoundedRectangle(cornerRadius: 16))
+        }
+        .buttonStyle(.plain)
+        .contextMenu {
+            Button(role: .destructive) {
+                AuthManager.shared.deleteEvent(event)
+            } label: {
+                Label("Elimina Impegno", systemImage: "trash")
+            }
+        }
+    }
+}
+
+// MARK: - AddEventView
+
+struct AddEventView: View {
+    @Binding var isPresented: Bool
+    let initialDate: Date
+    @State private var title = ""
+    @State private var date: Date
+    @State private var startTime: Date
+    @State private var reminderEnabled = false
+    @State private var reminderTime: Date
+
+    init(isPresented: Binding<Bool>, initialDate: Date) {
+        self._isPresented = isPresented
+        self.initialDate = initialDate
+        self._date = State(initialValue: initialDate)
+
+        let now = Date()
+        let cal = Calendar.current
+        var comps = cal.dateComponents([.year, .month, .day], from: initialDate)
+        let nowComps = cal.dateComponents([.hour, .minute], from: now)
+        comps.hour = nowComps.hour
+        comps.minute = nowComps.minute
+
+        let start = cal.date(from: comps) ?? initialDate
+        self._startTime = State(initialValue: start)
+        self._reminderTime = State(initialValue: start)
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Cosa devi fare?") {
+                    TextField("Esempio: Visita medica, Dentista, Spesa...", text: $title)
+                        .font(.body)
+                }
+
+                Section("Quando") {
+                    DatePicker("Giorno", selection: $date, displayedComponents: .date)
+                    DatePicker("Orario", selection: $startTime, displayedComponents: .hourAndMinute)
+                }
+
+                Section("Promemoria") {
+                    Toggle("🔔 Avvisami con notifica", isOn: $reminderEnabled)
+
+                    if reminderEnabled {
+                        DatePicker("Orario Notifica", selection: $reminderTime, displayedComponents: .hourAndMinute)
+                    }
+                }
+            }
+            .navigationTitle("Nuovo Impegno")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Annulla") { isPresented = false }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Salva") {
+                        saveAndDismiss()
+                    }
+                    .bold()
+                    .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+            }
+        }
+    }
+
+    private func saveAndDismiss() {
+        let cleanTitle = title.trimmingCharacters(in: .whitespaces)
+        guard !cleanTitle.isEmpty else { return }
+
+        AuthManager.shared.addEvent(
+            title: cleanTitle,
+            date: date,
+            startTime: startTime,
+            reminderEnabled: reminderEnabled,
+            reminderTime: reminderEnabled ? reminderTime : nil
+        )
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        isPresented = false
+    }
+}
+
+// MARK: - EditEventView
+
+struct EditEventView: View {
+    @Environment(\.dismiss) var dismiss
+    @State var event: CalendarEvent
+    @State private var title: String
+    @State private var date: Date
+    @State private var startTime: Date
+    @State private var reminderEnabled: Bool
+    @State private var reminderTime: Date
+
+    init(event: CalendarEvent) {
+        self._event = State(initialValue: event)
+        self._title = State(initialValue: event.title)
+        self._date = State(initialValue: event.date)
+        self._startTime = State(initialValue: event.startTime)
+        self._reminderEnabled = State(initialValue: event.reminderEnabled)
+        self._reminderTime = State(initialValue: event.reminderTime ?? event.startTime)
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Cosa") {
+                    TextField("Titolo impegno", text: $title)
+                        .font(.body)
+                }
+
+                Section("Quando") {
+                    DatePicker("Giorno", selection: $date, displayedComponents: .date)
+                    DatePicker("Orario", selection: $startTime, displayedComponents: .hourAndMinute)
+                }
+
+                Section("Promemoria") {
+                    Toggle("🔔 Avvisami con notifica", isOn: $reminderEnabled)
+
+                    if reminderEnabled {
+                        DatePicker("Orario Notifica", selection: $reminderTime, displayedComponents: .hourAndMinute)
+                    }
+                }
+
+                Section {
+                    Button(role: .destructive) {
+                        AuthManager.shared.deleteEvent(event)
+                        dismiss()
+                    } label: {
+                        HStack {
+                            Spacer()
+                            Label("Elimina Impegno", systemImage: "trash")
+                                .foregroundColor(.red)
+                            Spacer()
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Modifica Impegno")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Annulla") { dismiss() }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Salva") {
+                        saveChanges()
+                    }
+                    .bold()
+                    .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+            }
+        }
+    }
+
+    private func saveChanges() {
+        var updated = event
+        updated.title = title.trimmingCharacters(in: .whitespaces)
+        updated.date = date
+        updated.startTime = startTime
+        updated.reminderEnabled = reminderEnabled
+        updated.reminderTime = reminderEnabled ? reminderTime : nil
+
+        AuthManager.shared.updateEvent(updated)
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        dismiss()
+    }
+}
+
+// MARK: - AllRemindersView
+
+struct AllRemindersView: View {
+    @Binding var isPresented: Bool
+    @State private var auth = AuthManager.shared
+
+    var futureReminders: [CalendarEvent] {
+        let startOfToday = Calendar.current.startOfDay(for: Date())
+        return auth.calendarEvents
+            .filter { $0.reminderEnabled && $0.date >= startOfToday }
+            .sorted(by: { $0.date < $1.date })
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                if futureReminders.isEmpty {
+                    ContentUnavailableView(
+                        "Nessun Promemoria",
+                        systemImage: "bell.slash",
+                        description: Text("Tutti i tuoi impegni con notifica attiva appariranno qui.")
+                    )
+                } else {
+                    ForEach(futureReminders) { event in
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(event.title).font(.headline)
+                                Text(event.date.formatted(.dateTime.day().month().locale(Locale(identifier: "it_IT"))))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+
+                                if let rt = event.reminderTime {
+                                    Label(rt.formatted(.dateTime.hour().minute()), systemImage: "clock")
+                                        .font(.caption2.bold())
+                                        .foregroundColor(.orange)
+                                } else {
+                                    Label(event.startTime.formatted(.dateTime.hour().minute()), systemImage: "clock")
+                                        .font(.caption2.bold())
+                                        .foregroundColor(.orange)
+                                }
+                            }
+                            Spacer()
+                            Image(systemName: "bell.fill").foregroundColor(.orange)
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Promemoria Attivi")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Chiudi") { isPresented = false }
+                }
+            }
+        }
     }
 }
 
