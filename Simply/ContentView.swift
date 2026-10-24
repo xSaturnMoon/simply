@@ -649,7 +649,6 @@ struct FriendDetailView: View {
 
 struct CalendarView: View {
     @State private var auth = AuthManager.shared
-    @State private var showingAllReminders = false
     @State private var selectedEvent: CalendarEvent?
     @State private var currentMonth = Date()
     @State private var selectedDate = Date()
@@ -664,35 +663,51 @@ struct CalendarView: View {
                 List {
                     // SEZIONE 1: Mese con Frecce e Griglia Calendario
                     Section {
-                        VStack(spacing: 14) {
+                        VStack(spacing: 12) {
+                            // Mese e Frecce racchiusi in un rettangolo con angoli smussati
                             HStack {
-                                Button { changeMonth(by: -1) } label: {
-                                    Image(systemName: "chevron.left.circle.fill")
-                                        .font(.title2)
-                                        .foregroundColor(.secondary.opacity(0.6))
-                                        .frame(width: 44, height: 44)
-                                        .contentShape(Rectangle())
+                                Button {
+                                    changeMonth(by: -1)
+                                } label: {
+                                    Image(systemName: "chevron.left")
+                                        .font(.subheadline.bold())
+                                        .foregroundStyle(.primary)
+                                        .frame(width: 38, height: 38)
+                                        .background(Color.primary.opacity(0.06))
+                                        .clipShape(Circle())
                                 }
                                 .buttonStyle(.plain)
+                                .contentShape(Rectangle())
 
                                 Spacer()
 
                                 Text(currentMonth.formatted(.dateTime.month(.wide).year().locale(Locale(identifier: "it_IT"))).capitalized)
-                                    .font(.title2.bold())
+                                    .font(.title3.bold())
                                     .foregroundStyle(.primary)
 
                                 Spacer()
 
-                                Button { changeMonth(by: 1) } label: {
-                                    Image(systemName: "chevron.right.circle.fill")
-                                        .font(.title2)
-                                        .foregroundColor(.secondary.opacity(0.6))
-                                        .frame(width: 44, height: 44)
-                                        .contentShape(Rectangle())
+                                Button {
+                                    changeMonth(by: 1)
+                                } label: {
+                                    Image(systemName: "chevron.right")
+                                        .font(.subheadline.bold())
+                                        .foregroundStyle(.primary)
+                                        .frame(width: 38, height: 38)
+                                        .background(Color.primary.opacity(0.06))
+                                        .clipShape(Circle())
                                 }
                                 .buttonStyle(.plain)
+                                .contentShape(Rectangle())
                             }
-                            .padding(.horizontal, 4)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(.ultraThinMaterial)
+                            .clipShape(RoundedRectangle(cornerRadius: 18))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 18)
+                                    .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                            )
 
                             CalendarMonthGrid(
                                 currentMonth: currentMonth,
@@ -824,39 +839,17 @@ struct CalendarView: View {
             }
             .navigationTitle("Calendario")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button { showingAllReminders = true } label: {
-                        Image(systemName: "bell.fill").foregroundColor(.orange)
-                    }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                            currentMonth = Date()
-                            selectedDate = Date()
-                        }
-                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                    } label: {
-                        Image(systemName: "calendar.badge.clock")
-                            .font(.title3)
-                            .foregroundColor(.blue)
-                    }
-                }
-            }
             .sheet(isPresented: $showingAddEvent) {
                 AddEventView(isPresented: $showingAddEvent, initialDate: selectedDate)
             }
             .sheet(item: $selectedEvent) { event in
                 EditEventView(event: event)
             }
-            .sheet(isPresented: $showingAllReminders) {
-                AllRemindersView(isPresented: $showingAllReminders)
-            }
         }
     }
 
     func changeMonth(by value: Int) {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
         if let newMonth = Calendar.current.date(byAdding: .month, value: value, to: currentMonth) {
             withAnimation(.easeInOut(duration: 0.22)) {
                 currentMonth = newMonth
