@@ -12,9 +12,9 @@
 		E80000000000000000000003 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E80000000000000000000013 /* Assets.xcassets */; };
 		E80000000000000000000004 /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E80000000000000000000015 /* AuthManager.swift */; };
 		E80000000000000000000005 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = E80000000000000000000016 /* GoogleService-Info.plist */; };
-		E80000000000000000000006 /* AppIconPurple.jpg in Resources */ = {isa = PBXBuildFile; fileRef = E80000000000000000000017 /* AppIconPurple.jpg */; };
+		E80000000000000000000006 /* AppIconPurple.png in Resources */ = {isa = PBXBuildFile; fileRef = E80000000000000000000017 /* AppIconPurple.png */; };
 		E80000000000000000000007 /* AppIconWhite.png in Resources */ = {isa = PBXBuildFile; fileRef = E80000000000000000000018 /* AppIconWhite.png */; };
-		E80000000000000000000008 /* AppIconGray.jpg in Resources */ = {isa = PBXBuildFile; fileRef = E80000000000000000000019 /* AppIconGray.jpg */; };
+		E80000000000000000000008 /* AppIconGray.png in Resources */ = {isa = PBXBuildFile; fileRef = E80000000000000000000019 /* AppIconGray.png */; };
 		FBFBFB0000000000000000A1 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = FBFBFB0000000000000000B1 /* FirebaseAuth */; };
 		FBFBFB0000000000000000A2 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = FBFBFB0000000000000000B2 /* FirebaseFirestore */; };
 		FBFBFB0000000000000000A3 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = FBFBFB0000000000000000B3 /* FirebaseCore */; };
@@ -28,9 +28,9 @@
 		E80000000000000000000014 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		E80000000000000000000015 /* AuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManager.swift; sourceTree = "<group>"; };
 		E80000000000000000000016 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
-		E80000000000000000000017 /* AppIconPurple.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = AppIconPurple.jpg; sourceTree = "<group>"; };
+		E80000000000000000000017 /* AppIconPurple.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = AppIconPurple.png; sourceTree = "<group>"; };
 		E80000000000000000000018 /* AppIconWhite.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = AppIconWhite.png; sourceTree = "<group>"; };
-		E80000000000000000000019 /* AppIconGray.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = AppIconGray.jpg; sourceTree = "<group>"; };
+		E80000000000000000000019 /* AppIconGray.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = AppIconGray.png; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -64,9 +64,9 @@
 				E80000000000000000000013 /* Assets.xcassets */,
 				E80000000000000000000014 /* Info.plist */,
 				E80000000000000000000016 /* GoogleService-Info.plist */,
-				E80000000000000000000017 /* AppIconPurple.jpg */,
+				E80000000000000000000017 /* AppIconPurple.png */,
 				E80000000000000000000018 /* AppIconWhite.png */,
-				E80000000000000000000019 /* AppIconGray.jpg */,
+				E80000000000000000000019 /* AppIconGray.png */,
 			);
 			path = Simply;
 			sourceTree = "<group>";
@@ -146,9 +146,9 @@
 			files = (
 				E80000000000000000000003 /* Assets.xcassets in Resources */,
 				E80000000000000000000005 /* GoogleService-Info.plist in Resources */,
-				E80000000000000000000006 /* AppIconPurple.jpg in Resources */,
+				E80000000000000000000006 /* AppIconPurple.png in Resources */,
 				E80000000000000000000007 /* AppIconWhite.png in Resources */,
-				E80000000000000000000008 /* AppIconGray.jpg in Resources */,
+				E80000000000000000000008 /* AppIconGray.png in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -458,82 +458,44 @@ struct CalendarView: View {
 
 struct ProfileView: View {
     @State private var auth = AuthManager.shared
-    @State private var navigateToIconPicker = false
     private let bg = Color(red: 28/255, green: 28/255, blue: 30/255)
 
     var body: some View {
         NavigationStack {
             ZStack {
                 bg.ignoresSafeArea()
+                VStack(spacing: 24) {
+                    Image("AppLogo")
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 72, height: 72)
+                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
 
-                VStack(spacing: 28) {
-                    Spacer()
+                    Text(auth.currentUser?.email?
+                        .replacingOccurrences(of: "@simply.app", with: "") ?? "")
+                        .font(.title2.bold())
+                        .foregroundStyle(.white)
 
-                    // Avatar + nome
-                    VStack(spacing: 14) {
-                        Image("AppLogo")
-                            .resizable()
-                            .scaledToFill()
-                            .frame(width: 80, height: 80)
-                            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-
-                        Text(auth.currentUser?.email?
-                            .replacingOccurrences(of: "@simply.app", with: "") ?? "")
-                            .font(.title2.bold())
+                    Button {
+                        auth.logout()
+                    } label: {
+                        Text("Esci")
+                            .font(.system(size: 16, weight: .semibold))
                             .foregroundStyle(.white)
+                            .frame(width: 160, height: 48)
+                            .background(Capsule().stroke(Color.white.opacity(0.25), lineWidth: 1))
                     }
+                    .contentShape(Capsule())
 
-                    Spacer()
-
-                    // Azioni
-                    VStack(spacing: 12) {
-                        // Icona App
-                        NavigationLink(destination: IconPickerView()) {
-                            HStack {
-                                Image(systemName: "app.badge")
-                                    .font(.system(size: 17))
-                                    .foregroundStyle(.white.opacity(0.8))
-                                    .frame(width: 28)
-                                Text("Icona App")
-                                    .font(.system(size: 16, weight: .medium))
-                                    .foregroundStyle(.white)
-                                Spacer()
-                                Image(systemName: "chevron.right")
-                                    .font(.system(size: 13, weight: .semibold))
-                                    .foregroundStyle(.white.opacity(0.35))
-                            }
-                            .padding(.horizontal, 20)
-                            .frame(height: 54)
-                            .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                        }
-                        .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                        .buttonStyle(.plain)
-
-                        // Esci
-                        Button {
-                            auth.logout()
-                        } label: {
-                            HStack {
-                                Image(systemName: "rectangle.portrait.and.arrow.right")
-                                    .font(.system(size: 17))
-                                    .foregroundStyle(.red.opacity(0.85))
-                                    .frame(width: 28)
-                                Text("Esci")
-                                    .font(.system(size: 16, weight: .medium))
-                                    .foregroundStyle(.red.opacity(0.85))
-                                Spacer()
-                            }
-                            .padding(.horizontal, 20)
-                            .frame(height: 54)
-                            .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                        }
-                        .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                        .buttonStyle(.plain)
+                    NavigationLink(destination: IconPickerView()) {
+                        Text("Icona")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 160, height: 48)
+                            .background(Capsule().stroke(Color.white.opacity(0.25), lineWidth: 1))
                     }
-                    .padding(.horizontal, 28)
-
-                    Spacer()
-                        .frame(height: 20)
+                    .contentShape(Capsule())
+                    .buttonStyle(.plain)
                 }
             }
             .toolbarVisibility(.hidden, for: .navigationBar)
