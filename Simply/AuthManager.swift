@@ -117,7 +117,7 @@ class AuthManager {
 
     private func clearAll() {
         username = ""; friendCode = ""
-        friends = []; myItems = []; friendsItems = []
+        friends = []; myItems = []; friendsItems = [:]
         calendarEvents = []
         myItemsListener?.remove(); myItemsListener = nil
         calendarListener?.remove(); calendarListener = nil
