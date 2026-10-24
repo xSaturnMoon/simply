@@ -1183,13 +1183,11 @@ struct ManualTimeInputField: View {
             .padding(.vertical, 6)
         }
         .onAppear {
-            if !isNewEvent {
-                let cal = Calendar.current
-                let h = cal.component(.hour, from: time)
-                let m = cal.component(.minute, from: time)
-                hourText = String(format: "%02d", h)
-                minuteText = String(format: "%02d", m)
-            }
+            let cal = Calendar.current
+            let h = cal.component(.hour, from: time)
+            let m = cal.component(.minute, from: time)
+            hourText = String(format: "%02d", h)
+            minuteText = String(format: "%02d", m)
         }
     }
 
@@ -1334,12 +1332,30 @@ struct AddEventView: View {
         let cleanTitle = title.trimmingCharacters(in: .whitespaces)
         guard !cleanTitle.isEmpty else { return }
 
+        let cal = Calendar.current
+        let dateComps = cal.dateComponents([.year, .month, .day], from: date)
+
+        var startComps = cal.dateComponents([.hour, .minute, .second], from: startTime)
+        startComps.year = dateComps.year
+        startComps.month = dateComps.month
+        startComps.day = dateComps.day
+        let unifiedStartTime = cal.date(from: startComps) ?? startTime
+
+        var unifiedReminderTime: Date? = nil
+        if reminderEnabled {
+            var remComps = cal.dateComponents([.hour, .minute, .second], from: reminderTime)
+            remComps.year = dateComps.year
+            remComps.month = dateComps.month
+            remComps.day = dateComps.day
+            unifiedReminderTime = cal.date(from: remComps) ?? reminderTime
+        }
+
         AuthManager.shared.addEvent(
             title: cleanTitle,
             date: date,
-            startTime: startTime,
+            startTime: unifiedStartTime,
             reminderEnabled: reminderEnabled,
-            reminderTime: reminderEnabled ? reminderTime : nil
+            reminderTime: unifiedReminderTime
         )
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         isPresented = false
@@ -1419,12 +1435,33 @@ struct EditEventView: View {
     }
 
     private func saveChanges() {
+        let cleanTitle = title.trimmingCharacters(in: .whitespaces)
+        guard !cleanTitle.isEmpty else { return }
+
+        let cal = Calendar.current
+        let dateComps = cal.dateComponents([.year, .month, .day], from: date)
+
+        var startComps = cal.dateComponents([.hour, .minute, .second], from: startTime)
+        startComps.year = dateComps.year
+        startComps.month = dateComps.month
+        startComps.day = dateComps.day
+        let unifiedStartTime = cal.date(from: startComps) ?? startTime
+
+        var unifiedReminderTime: Date? = nil
+        if reminderEnabled {
+            var remComps = cal.dateComponents([.hour, .minute, .second], from: reminderTime)
+            remComps.year = dateComps.year
+            remComps.month = dateComps.month
+            remComps.day = dateComps.day
+            unifiedReminderTime = cal.date(from: remComps) ?? reminderTime
+        }
+
         var updated = event
-        updated.title = title.trimmingCharacters(in: .whitespaces)
+        updated.title = cleanTitle
         updated.date = date
-        updated.startTime = startTime
+        updated.startTime = unifiedStartTime
         updated.reminderEnabled = reminderEnabled
-        updated.reminderTime = reminderEnabled ? reminderTime : nil
+        updated.reminderTime = unifiedReminderTime
 
         AuthManager.shared.updateEvent(updated)
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
@@ -1442,7 +1479,12 @@ struct AllRemindersView: View {
         let startOfToday = Calendar.current.startOfDay(for: Date())
         return auth.calendarEvents
             .filter { $0.reminderEnabled && $0.date >= startOfToday }
-            .sorted(by: { $0.date < $1.date })
+            .sorted(by: {
+                if Calendar.current.isDate($0.date, inSameDayAs: $1.date) {
+                    return $0.startTime < $1.startTime
+                }
+                return $0.date < $1.date
+            })
     }
 
     var body: some View {

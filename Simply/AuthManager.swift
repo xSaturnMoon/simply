@@ -104,11 +104,13 @@ class AuthManager {
     private var friendsListener: ListenerRegistration?
     private var friendsListeners: [String: ListenerRegistration] = [:]
     private var calendarListener: ListenerRegistration?
+    private var hasLoadedCalendarEvents = false
 
     private init() {
         requestNotificationPermission()
         currentUser = Auth.auth().currentUser
         if let user = currentUser {
+            loadProfileFromLocalCache(uid: user.uid)
             let localItems = loadMyItemsFromLocalCache(uid: user.uid)
             if !localItems.isEmpty {
                 self.myItems = localItems
@@ -120,14 +122,16 @@ class AuthManager {
             let localEvents = loadCalendarFromLocalCache(uid: user.uid)
             if !localEvents.isEmpty {
                 self.calendarEvents = localEvents
+                self.hasLoadedCalendarEvents = true
                 purgeOldEvents(uid: user.uid)
+                cleanOrphanNotifications()
             }
-            cleanOrphanNotifications()
         }
         Auth.auth().addStateDidChangeListener { [weak self] _, user in
             Task { @MainActor in
                 self?.currentUser = user
                 if let user = user {
+                    self?.loadProfileFromLocalCache(uid: user.uid)
                     let localItems = self?.loadMyItemsFromLocalCache(uid: user.uid) ?? []
                     if !localItems.isEmpty && (self?.myItems.isEmpty ?? true) {
                         self?.myItems = localItems
@@ -139,9 +143,10 @@ class AuthManager {
                     let localEvents = self?.loadCalendarFromLocalCache(uid: user.uid) ?? []
                     if !localEvents.isEmpty && (self?.calendarEvents.isEmpty ?? true) {
                         self?.calendarEvents = localEvents
+                        self?.hasLoadedCalendarEvents = true
                         self?.purgeOldEvents(uid: user.uid)
+                        self?.cleanOrphanNotifications()
                     }
-                    self?.cleanOrphanNotifications()
                     await self?.loadProfile(uid: user.uid)
                     self?.startFriendsListener(uid: user.uid)
                     self?.startMyItemsListener(uid: user.uid)
@@ -172,6 +177,83 @@ class AuthManager {
             return code
         }
         return generateCode()
+    }
+
+    // Tracking elementi eliminati esplicitamente dall'utente per evitare che ricompaiano da snapshot obsoleti o wipeout
+    private func deletedItemIds(uid: String) -> Set<String> {
+        let array = UserDefaults.standard.stringArray(forKey: "simply_deleted_items_\(uid)") ?? []
+        return Set(array)
+    }
+
+    private func markItemDeleted(_ id: String, uid: String) {
+        var ids = deletedItemIds(uid: uid)
+        ids.insert(id)
+        UserDefaults.standard.set(Array(ids), forKey: "simply_deleted_items_\(uid)")
+    }
+
+    private func unmarkItemDeleted(_ id: String, uid: String) {
+        var ids = deletedItemIds(uid: uid)
+        ids.remove(id)
+        UserDefaults.standard.set(Array(ids), forKey: "simply_deleted_items_\(uid)")
+    }
+
+    private func deletedEventIds(uid: String) -> Set<String> {
+        let array = UserDefaults.standard.stringArray(forKey: "simply_deleted_events_\(uid)") ?? []
+        return Set(array)
+    }
+
+    private func markEventDeleted(_ id: String, uid: String) {
+        var ids = deletedEventIds(uid: uid)
+        ids.insert(id)
+        UserDefaults.standard.set(Array(ids), forKey: "simply_deleted_events_\(uid)")
+    }
+
+    private func unmarkEventDeleted(_ id: String, uid: String) {
+        var ids = deletedEventIds(uid: uid)
+        ids.remove(id)
+        UserDefaults.standard.set(Array(ids), forKey: "simply_deleted_events_\(uid)")
+    }
+
+    // Cache profilo: username e friendCode disponibili istantaneamente anche offline
+    private func saveProfileToLocalCache(username: String, friendCode: String, uid: String) {
+        UserDefaults.standard.set(username, forKey: "simply_profile_username_\(uid)")
+        UserDefaults.standard.set(friendCode, forKey: "simply_profile_code_\(uid)")
+    }
+
+    private func loadProfileFromLocalCache(uid: String) {
+        if let u = UserDefaults.standard.string(forKey: "simply_profile_username_\(uid)"), !u.isEmpty {
+            self.username = u
+        }
+        if let c = UserDefaults.standard.string(forKey: "simply_profile_code_\(uid)"), !c.isEmpty {
+            self.friendCode = c
+        }
+    }
+
+    // Cache spesa amici per consultazione istantanea offline
+    private func saveFriendItemsToLocalCache(_ items: [ShoppingItem], friendUid: String) {
+        if let data = try? JSONEncoder().encode(items) {
+            UserDefaults.standard.set(data, forKey: "simply_friend_items_\(friendUid)")
+        }
+    }
+
+    private func loadFriendItemsFromLocalCache(friendUid: String) -> [ShoppingItem] {
+        guard let data = UserDefaults.standard.data(forKey: "simply_friend_items_\(friendUid)"),
+              let items = try? JSONDecoder().decode([ShoppingItem].self, from: data) else {
+            return []
+        }
+        return items
+    }
+
+    // Parsing robusto date per evitare incongruenze di formato
+    private func parseDate(_ value: Any?) -> Date? {
+        if let ts = value as? Timestamp {
+            return ts.dateValue()
+        } else if let d = value as? Date {
+            return d
+        } else if let ti = value as? TimeInterval {
+            return Date(timeIntervalSince1970: ti)
+        }
+        return nil
     }
 
     // Cache locale di sicurezza per gli amici: nessun ritardo e zero perdite!
@@ -273,8 +355,9 @@ class AuthManager {
         }
     }
 
-    // Pulizia notifiche fantasma/orfane (elimina qualsiasi notifica rimasta programmata per eventi eliminati)
+    // Pulizia notifiche fantasma/orfane (eseguita SOLO quando gli impegni sono stati caricati per non cancellare i promemoria!)
     func cleanOrphanNotifications() {
+        guard hasLoadedCalendarEvents else { return }
         UNUserNotificationCenter.current().getPendingNotificationRequests { [weak self] requests in
             guard let self else { return }
             Task { @MainActor in
@@ -292,6 +375,7 @@ class AuthManager {
         username = ""; friendCode = ""
         friends = []; myItems = []; friendsItems = [:]
         calendarEvents = []
+        hasLoadedCalendarEvents = false
         myItemsListener?.remove(); myItemsListener = nil
         friendsListener?.remove(); friendsListener = nil
         calendarListener?.remove(); calendarListener = nil
@@ -334,6 +418,7 @@ class AuthManager {
 
             self.username = lower
             self.friendCode = code
+            saveProfileToLocalCache(username: lower, friendCode: code, uid: uid)
             currentUser = result.user
         } catch let err as NSError {
             errorMessage = mapError(err)
@@ -396,6 +481,7 @@ class AuthManager {
 
             self.username = uName
             self.friendCode = code
+            saveProfileToLocalCache(username: uName, friendCode: code, uid: uid)
         } catch {
             print("Errore caricamento profilo: \(error)")
         }
@@ -488,12 +574,22 @@ class AuthManager {
                 return
             }
 
+            // 1. Salva nella propria rubrica
             try await db.collection("users").document(uid)
                 .collection("friends").document(friendUid).setData([
                     "nickname": cleanNick,
                     "friendCode": cleanCode,
                     "addedAt": FieldValue.serverTimestamp()
-                ])
+                ], merge: true)
+
+            // 2. Connessione reciproca: crea automaticamente il contatto inverso nell'account dell'amico
+            let myNick = self.username.isEmpty ? "Amico" : self.username
+            try? await db.collection("users").document(friendUid)
+                .collection("friends").document(uid).setData([
+                    "nickname": myNick,
+                    "friendCode": self.friendCode,
+                    "addedAt": FieldValue.serverTimestamp()
+                ], merge: true)
 
             let newFriend = Friend(id: friendUid, nickname: cleanNick, friendCode: cleanCode)
             if !friends.contains(where: { $0.id == friendUid }) {
@@ -522,6 +618,8 @@ class AuthManager {
         Task {
             try? await db.collection("users").document(uid)
                 .collection("friends").document(friendUid).delete()
+            try? await db.collection("users").document(friendUid)
+                .collection("friends").document(uid).delete()
         }
     }
 
@@ -548,21 +646,19 @@ class AuthManager {
                 guard let docs = snap?.documents else { return }
 
                 Task { @MainActor in
-                    let newItems = docs.compactMap { doc -> ShoppingItem? in
+                    let deleted = self.deletedItemIds(uid: uid)
+
+                    let remoteItems = docs.compactMap { doc -> ShoppingItem? in
+                        let docId = doc.documentID
+                        if deleted.contains(docId) { return nil }
+
                         let d = doc.data()
                         guard let name = d["name"] as? String else { return nil }
 
-                        let date: Date
-                        if let ts = d["createdAt"] as? Timestamp {
-                            date = ts.dateValue()
-                        } else if let ts = d["serverCreatedAt"] as? Timestamp {
-                            date = ts.dateValue()
-                        } else {
-                            date = Date()
-                        }
+                        let date = self.parseDate(d["createdAt"]) ?? self.parseDate(d["serverCreatedAt"]) ?? Date()
 
                         return ShoppingItem(
-                            id: doc.documentID,
+                            id: docId,
                             name: name,
                             quantity: d["quantity"] as? String ?? "",
                             completed: d["completed"] as? Bool ?? false,
@@ -570,9 +666,22 @@ class AuthManager {
                         )
                     }
 
-                    if self.myItems != newItems {
+                    // Riconciliazione sicura a 2 vie: mantieni elementi locali non ancora arrivati su Firestore
+                    var merged = remoteItems
+                    let remoteIds = Set(remoteItems.map { $0.id })
+
+                    for localItem in self.myItems {
+                        if !remoteIds.contains(localItem.id) && !deleted.contains(localItem.id) {
+                            merged.append(localItem)
+                            self.pushItemToFirestore(localItem, uid: uid)
+                        }
+                    }
+
+                    merged.sort { $0.createdAt > $1.createdAt }
+
+                    if self.myItems != merged {
                         withAnimation(.spring(response: 0.45, dampingFraction: 0.75)) {
-                            self.myItems = newItems
+                            self.myItems = merged
                         }
                     }
                     self.saveMyItemsToLocalCache(self.myItems, uid: uid)
@@ -580,15 +689,35 @@ class AuthManager {
             }
     }
 
+    private func pushItemToFirestore(_ item: ShoppingItem, uid: String) {
+        Task {
+            do {
+                try await db.collection("users").document(uid)
+                    .collection("shopping_items").document(item.id).setData([
+                        "id": item.id,
+                        "name": item.name,
+                        "quantity": item.quantity,
+                        "completed": item.completed,
+                        "createdAt": Timestamp(date: item.createdAt),
+                        "serverCreatedAt": FieldValue.serverTimestamp()
+                    ], merge: true)
+            } catch {
+                print("Errore push spesa su Firestore: \(error)")
+            }
+        }
+    }
+
     func addMyItem(name: String, quantity: String = "") {
         guard let uid = currentUser?.uid else { return }
         let t = name.trimmingCharacters(in: .whitespaces)
         guard !t.isEmpty else { return }
 
-        // Genera il documentID nativo di Firestore prima, così da sincronizzare ID locale e remoto al 100%
+        // Genera il documentID nativo di Firestore in anticipo: ID locale e remoto sincronizzati al 100%
         let docRef = db.collection("users").document(uid).collection("shopping_items").document()
         let itemId = docRef.documentID
         let now = Date()
+
+        unmarkItemDeleted(itemId, uid: uid)
 
         let newItem = ShoppingItem(
             id: itemId,
@@ -603,20 +732,7 @@ class AuthManager {
         }
         saveMyItemsToLocalCache(myItems, uid: uid)
 
-        Task {
-            do {
-                try await docRef.setData([
-                    "id": itemId,
-                    "name": t,
-                    "quantity": quantity,
-                    "completed": false,
-                    "createdAt": Timestamp(date: now),
-                    "serverCreatedAt": FieldValue.serverTimestamp()
-                ])
-            } catch {
-                print("Errore salvataggio prodotto spesa su Firestore: \(error)")
-            }
-        }
+        pushItemToFirestore(newItem, uid: uid)
     }
 
     func toggleMyItem(_ item: ShoppingItem) {
@@ -634,10 +750,10 @@ class AuthManager {
             do {
                 try await db.collection("users").document(uid)
                     .collection("shopping_items").document(item.id)
-                    .updateData([
+                    .setData([
                         "completed": newStatus,
                         "updatedAt": FieldValue.serverTimestamp()
-                    ])
+                    ], merge: true)
             } catch {
                 print("Errore toggle spesa su Firestore: \(error)")
             }
@@ -646,6 +762,8 @@ class AuthManager {
 
     func deleteMyItem(_ item: ShoppingItem) {
         guard let uid = currentUser?.uid else { return }
+
+        markItemDeleted(item.id, uid: uid)
 
         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
             myItems.removeAll { $0.id == item.id }
@@ -662,10 +780,15 @@ class AuthManager {
         }
     }
 
-    // MARK: - Lista spesa amici (in tempo reale)
+    // MARK: - Lista spesa amici (in tempo reale con cache locale)
 
     func startFriendItemsListener(friendUid: String) {
         guard friendsListeners[friendUid] == nil else { return }
+
+        let local = loadFriendItemsFromLocalCache(friendUid: friendUid)
+        if !local.isEmpty && (friendsItems[friendUid]?.isEmpty ?? true) {
+            friendsItems[friendUid] = local
+        }
 
         friendsListeners[friendUid] = db.collection("users").document(friendUid)
             .collection("shopping_items")
@@ -683,14 +806,7 @@ class AuthManager {
                         let d = doc.data()
                         guard let name = d["name"] as? String else { return nil }
 
-                        let date: Date
-                        if let ts = d["createdAt"] as? Timestamp {
-                            date = ts.dateValue()
-                        } else if let ts = d["serverCreatedAt"] as? Timestamp {
-                            date = ts.dateValue()
-                        } else {
-                            date = Date()
-                        }
+                        let date = self.parseDate(d["createdAt"]) ?? self.parseDate(d["serverCreatedAt"]) ?? Date()
 
                         return ShoppingItem(
                             id: doc.documentID,
@@ -706,6 +822,7 @@ class AuthManager {
                             self.friendsItems[friendUid] = newItems
                         }
                     }
+                    self.saveFriendItemsToLocalCache(newItems, friendUid: friendUid)
                 }
             }
     }
@@ -716,6 +833,7 @@ class AuthManager {
                 list[idx].completed.toggle()
                 friendsItems[friendUid] = list
             }
+            saveFriendItemsToLocalCache(list, friendUid: friendUid)
         }
 
         let newStatus = !item.completed
@@ -723,10 +841,10 @@ class AuthManager {
             do {
                 try await db.collection("users").document(friendUid)
                     .collection("shopping_items").document(item.id)
-                    .updateData([
+                    .setData([
                         "completed": newStatus,
                         "updatedAt": FieldValue.serverTimestamp()
-                    ])
+                    ], merge: true)
             } catch {
                 print("Errore toggle spesa amico su Firestore: \(error)")
             }
@@ -742,6 +860,7 @@ class AuthManager {
         let local = loadCalendarFromLocalCache(uid: uid)
         if !local.isEmpty && calendarEvents.isEmpty {
             calendarEvents = local
+            hasLoadedCalendarEvents = true
             purgeOldEvents(uid: uid)
         }
 
@@ -757,40 +876,33 @@ class AuthManager {
                 guard let docs = snap?.documents else { return }
 
                 Task { @MainActor in
+                    self.hasLoadedCalendarEvents = true
                     let cal = Calendar.current
                     let cutoffDate = cal.date(byAdding: .month, value: -1, to: Date()) ?? Date().addingTimeInterval(-30 * 24 * 3600)
+                    let deleted = self.deletedEventIds(uid: uid)
 
                     var validEvents: [CalendarEvent] = []
                     var expiredIds: [String] = []
 
                     for doc in docs {
+                        let docId = doc.documentID
+                        if deleted.contains(docId) { continue }
+
                         let d = doc.data()
                         guard let title = d["title"] as? String else { continue }
 
-                        let date: Date
-                        if let ts = d["date"] as? Timestamp {
-                            date = ts.dateValue()
-                        } else {
-                            date = Date()
-                        }
-
-                        let startTime: Date
-                        if let ts = d["startTime"] as? Timestamp {
-                            startTime = ts.dateValue()
-                        } else {
-                            startTime = date
-                        }
-
-                        let reminderTime = (d["reminderTime"] as? Timestamp)?.dateValue()
+                        let date = self.parseDate(d["date"]) ?? Date()
+                        let startTime = self.parseDate(d["startTime"]) ?? date
+                        let reminderTime = self.parseDate(d["reminderTime"])
 
                         // Se l'evento è più vecchio di 1 mese, marcalo per l'eliminazione automatica
                         if date < cutoffDate {
-                            expiredIds.append(doc.documentID)
+                            expiredIds.append(docId)
                             continue
                         }
 
                         let event = CalendarEvent(
-                            id: doc.documentID,
+                            id: docId,
                             title: title,
                             date: date,
                             startTime: startTime,
@@ -801,12 +913,27 @@ class AuthManager {
                         validEvents.append(event)
                     }
 
-                    if self.calendarEvents != validEvents {
-                        withAnimation(.spring(response: 0.45, dampingFraction: 0.75)) {
-                            self.calendarEvents = validEvents
+                    // Riconciliazione sicura a 2 vie: mantieni eventi locali non ancora arrivati su Firestore
+                    var merged = validEvents
+                    let remoteIds = Set(validEvents.map { $0.id })
+
+                    for localEvent in self.calendarEvents {
+                        if !remoteIds.contains(localEvent.id) && !deleted.contains(localEvent.id) {
+                            if localEvent.date >= cutoffDate {
+                                merged.append(localEvent)
+                                self.pushEventToFirestore(localEvent, uid: uid)
+                            }
                         }
                     }
-                    self.saveCalendarToLocalCache(validEvents, uid: uid)
+
+                    merged.sort { $0.startTime < $1.startTime }
+
+                    if self.calendarEvents != merged {
+                        withAnimation(.spring(response: 0.45, dampingFraction: 0.75)) {
+                            self.calendarEvents = merged
+                        }
+                    }
+                    self.saveCalendarToLocalCache(self.calendarEvents, uid: uid)
                     self.cleanOrphanNotifications()
 
                     // Elimina dal database Firestore i vecchi appuntamenti scaduti
@@ -824,15 +951,40 @@ class AuthManager {
             }
     }
 
+    private func pushEventToFirestore(_ event: CalendarEvent, uid: String) {
+        Task {
+            do {
+                var data: [String: Any] = [
+                    "id": event.id,
+                    "title": event.title,
+                    "date": Timestamp(date: event.date),
+                    "startTime": Timestamp(date: event.startTime),
+                    "isCompleted": event.isCompleted,
+                    "reminderEnabled": event.reminderEnabled,
+                    "createdAt": Timestamp(date: Date()),
+                    "serverCreatedAt": FieldValue.serverTimestamp()
+                ]
+                if let rt = event.reminderTime {
+                    data["reminderTime"] = Timestamp(date: rt)
+                }
+                try await db.collection("users").document(uid)
+                    .collection("calendar_events").document(event.id)
+                    .setData(data, merge: true)
+            } catch {
+                print("Errore push evento su Firestore: \(error)")
+            }
+        }
+    }
+
     func addEvent(title: String, date: Date, startTime: Date, reminderEnabled: Bool, reminderTime: Date? = nil) {
         guard let uid = currentUser?.uid else { return }
         let cleanTitle = title.trimmingCharacters(in: .whitespaces)
         guard !cleanTitle.isEmpty else { return }
 
-        // Genera il documentID nativo di Firestore in modo sincrono prima dell'inserimento: zero disallineamenti!
+        // Genera il documentID nativo di Firestore prima dell'inserimento: sincronizzazione perfetta
         let docRef = db.collection("users").document(uid).collection("calendar_events").document()
         let eventId = docRef.documentID
-        let now = Date()
+        unmarkEventDeleted(eventId, uid: uid)
 
         let newEvent = CalendarEvent(
             id: eventId,
@@ -846,6 +998,7 @@ class AuthManager {
 
         withAnimation(.spring(response: 0.45, dampingFraction: 0.75)) {
             calendarEvents.append(newEvent)
+            calendarEvents.sort { $0.startTime < $1.startTime }
         }
         saveCalendarToLocalCache(calendarEvents, uid: uid)
 
@@ -853,27 +1006,7 @@ class AuthManager {
             scheduleNotification(for: newEvent)
         }
 
-        Task {
-            do {
-                var data: [String: Any] = [
-                    "id": eventId,
-                    "title": cleanTitle,
-                    "date": Timestamp(date: date),
-                    "startTime": Timestamp(date: startTime),
-                    "isCompleted": false,
-                    "reminderEnabled": reminderEnabled,
-                    "createdAt": Timestamp(date: now),
-                    "serverCreatedAt": FieldValue.serverTimestamp()
-                ]
-                if let rt = reminderTime {
-                    data["reminderTime"] = Timestamp(date: rt)
-                }
-
-                try await docRef.setData(data)
-            } catch {
-                print("Errore salvataggio evento su Firestore: \(error)")
-            }
-        }
+        pushEventToFirestore(newEvent, uid: uid)
     }
 
     func updateEvent(_ event: CalendarEvent) {
@@ -882,6 +1015,7 @@ class AuthManager {
         if let idx = calendarEvents.firstIndex(where: { $0.id == event.id }) {
             withAnimation(.spring(response: 0.45, dampingFraction: 0.75)) {
                 calendarEvents[idx] = event
+                calendarEvents.sort { $0.startTime < $1.startTime }
             }
             saveCalendarToLocalCache(calendarEvents, uid: uid)
         }
@@ -919,6 +1053,8 @@ class AuthManager {
 
     func deleteEvent(_ event: CalendarEvent) {
         guard let uid = currentUser?.uid else { return }
+
+        markEventDeleted(event.id, uid: uid)
 
         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
             calendarEvents.removeAll { $0.id == event.id }
@@ -964,10 +1100,10 @@ class AuthManager {
             do {
                 try await db.collection("users").document(uid)
                     .collection("calendar_events").document(event.id)
-                    .updateData([
+                    .setData([
                         "isCompleted": newStatus,
                         "updatedAt": FieldValue.serverTimestamp()
-                    ])
+                    ], merge: true)
             } catch {
                 print("Errore toggle complete evento: \(error)")
             }
