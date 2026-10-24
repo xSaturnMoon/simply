@@ -7,12 +7,14 @@ import SwiftUI
 struct ShoppingItem: Identifiable, Equatable {
     var id: String
     var name: String
+    var quantity: String
     var completed: Bool
     var createdAt: Date
 
-    init(id: String = UUID().uuidString, name: String, completed: Bool = false, createdAt: Date = Date()) {
+    init(id: String = UUID().uuidString, name: String, quantity: String = "", completed: Bool = false, createdAt: Date = Date()) {
         self.id = id
         self.name = name
+        self.quantity = quantity
         self.completed = completed
         self.createdAt = createdAt
     }
@@ -101,7 +103,6 @@ class AuthManager {
         isLoading = true; defer { isLoading = false }
 
         do {
-            // Codice amico unico
             var code = generateCode()
             while (try? await db.collection("friendCodes").document(code).getDocument())?.exists == true {
                 code = generateCode()
@@ -238,6 +239,7 @@ class AuthManager {
                         return ShoppingItem(
                             id: doc.documentID,
                             name: name,
+                            quantity: d["quantity"] as? String ?? "",
                             completed: d["completed"] as? Bool ?? false,
                             createdAt: (d["createdAt"] as? Timestamp)?.dateValue() ?? Date()
                         )
@@ -246,7 +248,7 @@ class AuthManager {
             }
     }
 
-    func addMyItem(_ name: String) {
+    func addMyItem(name: String, quantity: String = "") {
         guard let uid = currentUser?.uid else { return }
         let t = name.trimmingCharacters(in: .whitespaces)
         guard !t.isEmpty else { return }
@@ -254,6 +256,7 @@ class AuthManager {
             try? await db.collection("users").document(uid)
                 .collection("shopping_items").addDocument(data: [
                     "name": t,
+                    "quantity": quantity,
                     "completed": false,
                     "createdAt": FieldValue.serverTimestamp()
                 ])
@@ -277,6 +280,29 @@ class AuthManager {
         }
     }
 
+    func clearAllMyItems() {
+        guard let uid = currentUser?.uid else { return }
+        Task {
+            let snap = try? await db.collection("users").document(uid).collection("shopping_items").getDocuments()
+            guard let docs = snap?.documents else { return }
+            for doc in docs {
+                try? await doc.reference.delete()
+            }
+        }
+    }
+
+    func clearCompletedMyItems() {
+        guard let uid = currentUser?.uid else { return }
+        Task {
+            let snap = try? await db.collection("users").document(uid).collection("shopping_items")
+                .whereField("completed", isEqualTo: true).getDocuments()
+            guard let docs = snap?.documents else { return }
+            for doc in docs {
+                try? await doc.reference.delete()
+            }
+        }
+    }
+
     // MARK: - Lista amici
 
     func startFriendItemsListener(friendUid: String) {
@@ -293,6 +319,7 @@ class AuthManager {
                         return ShoppingItem(
                             id: doc.documentID,
                             name: name,
+                            quantity: d["quantity"] as? String ?? "",
                             completed: d["completed"] as? Bool ?? false,
                             createdAt: (d["createdAt"] as? Timestamp)?.dateValue() ?? Date()
                         )
@@ -301,7 +328,6 @@ class AuthManager {
             }
     }
 
-    // Spunta un elemento della lista di un amico
     func toggleFriendItem(_ item: ShoppingItem, friendUid: String) {
         Task {
             try? await db.collection("users").document(friendUid)

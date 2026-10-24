@@ -176,191 +176,609 @@ struct LoginView: View {
 struct MainAppView: View {
     var body: some View {
         TabView {
-            Tab("Lista", systemImage: "cart") { ShoppingListView() }
-            Tab("Calendario", systemImage: "calendar") { CalendarView() }
-            Tab("Profilo", systemImage: "person.circle") { ProfileView() }
+            Tab("Spesa", systemImage: "cart") {
+                ShoppingListView()
+            }
+            Tab("Calendario", systemImage: "calendar") {
+                CalendarView()
+            }
+            Tab("Impostazioni", systemImage: "gearshape") {
+                ProfileView()
+            }
         }
+        .tint(.blue)
     }
 }
 
-// MARK: - Shopping List
+// MARK: - Shopping List (Spesa)
 
 struct ShoppingListView: View {
     @State private var auth = AuthManager.shared
-    @State private var selectedFriendUid: String? = nil  // nil = la mia lista
-    @State private var newItemText = ""
-    @State private var showInput = false
-    @FocusState private var inputFocused: Bool
-    private let bg = Color(red: 28/255, green: 28/255, blue: 30/255)
+    @State private var showingShare = false
+    @State private var showingFriendsLists = false
+    @State private var quickItemName = ""
+    @State private var selectedQty: String = "ND"
+    @FocusState private var isNameFocused: Bool
+    @State private var showingClearAllAlert = false
+    @State private var showingClearCheckedAlert = false
 
-    private var currentItems: [ShoppingItem] {
-        if let uid = selectedFriendUid { return auth.friendsItems[uid] ?? [] }
-        return auth.myItems
+    let quantityPresets = ["ND", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
+
+    var isQuickAddValid: Bool {
+        !quickItemName.trimmingCharacters(in: .whitespaces).isEmpty
     }
-    private var isMyList: Bool { selectedFriendUid == nil }
+
+    var activeItems: [ShoppingItem] {
+        auth.myItems.filter { !$0.completed }
+    }
+
+    var completedItems: [ShoppingItem] {
+        auth.myItems
+            .filter { $0.completed }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
 
     var body: some View {
-        ZStack {
-            bg.ignoresSafeArea()
-            VStack(spacing: 0) {
+        NavigationStack {
+            ZStack {
+                Color(uiColor: .systemBackground)
+                    .ignoresSafeArea()
 
-                // Header
-                HStack {
-                    Text("Lista")
-                        .font(.system(size: 28, weight: .bold)).foregroundStyle(.white)
-                    Spacer()
-                    if isMyList {
-                        Button {
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { showInput.toggle() }
-                            if showInput { inputFocused = true }
-                        } label: {
-                            Image(systemName: showInput ? "xmark" : "plus")
-                                .font(.system(size: 16, weight: .semibold)).foregroundStyle(.white)
-                                .frame(width: 36, height: 36).glassEffect(.regular, in: Circle())
-                        }.contentShape(Circle())
+                List {
+                    // Stat cards
+                    Section {
+                        HStack(spacing: 15) {
+                            statCard(title: "Da comprare", value: "\(activeItems.count)", icon: "cart.fill", color: .orange)
+                            statCard(title: "Completati", value: "\(completedItems.count)", icon: "checkmark.seal.fill", color: .green)
+                        }
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .padding(.vertical, 10)
                     }
-                }
-                .padding(.horizontal, 24).padding(.top, 16).padding(.bottom, 12)
+                    .padding(.horizontal)
 
-                // Selettore Io / Amici
-                if !auth.friends.isEmpty {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            // "Io"
-                            ListTabPill(label: "Io", isSelected: isMyList) {
-                                withAnimation(.spring(response: 0.3)) {
-                                    selectedFriendUid = nil
-                                    showInput = false
+                    // Widget Aggiunta Rapida
+                    Section {
+                        HStack(spacing: 12) {
+                            // Sinistra: Campo Nome + Bottoni Quantità
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "cart.fill.badge.plus")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                        .frame(width: 20)
+
+                                    TextField("Nome prodotto...", text: $quickItemName)
+                                        .focused($isNameFocused)
+                                        .submitLabel(.done)
+                                        .onSubmit {
+                                            addQuickItem()
+                                        }
+                                        .foregroundStyle(.primary)
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 10)
+                                .background(Color(uiColor: .secondarySystemGroupedBackground))
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                                // Selettori Quantità Rapidi
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 8) {
+                                        ForEach(quantityPresets, id: \.self) { preset in
+                                            Button {
+                                                selectedQty = preset
+                                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                            } label: {
+                                                Text(preset)
+                                                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                                                    .frame(width: 44, height: 44)
+                                                    .background(
+                                                        selectedQty == preset ?
+                                                        Color.blue :
+                                                        Color(uiColor: .secondarySystemGroupedBackground)
+                                                    )
+                                                    .foregroundColor(selectedQty == preset ? .white : .primary)
+                                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                                                    .overlay(
+                                                        RoundedRectangle(cornerRadius: 12)
+                                                            .stroke(selectedQty == preset ? Color.blue.opacity(0.8) : Color.white.opacity(0.12), lineWidth: 1)
+                                                    )
+                                            }
+                                            .buttonStyle(.plain)
+                                        }
+                                    }
+                                    .padding(.vertical, 4)
                                 }
                             }
-                            ForEach(auth.friends) { friend in
-                                ListTabPill(label: friend.nickname, isSelected: selectedFriendUid == friend.id) {
-                                    withAnimation(.spring(response: 0.3)) {
-                                        selectedFriendUid = friend.id
-                                        showInput = false
+
+                            // Destra: Mega Tasto +
+                            Button {
+                                addQuickItem()
+                            } label: {
+                                ZStack {
+                                    RoundedRectangle(cornerRadius: 14)
+                                        .fill(isQuickAddValid ? Color.blue : Color.gray.opacity(0.25))
+
+                                    Image(systemName: "plus")
+                                        .font(.system(size: 26, weight: .bold))
+                                        .foregroundColor(isQuickAddValid ? .white : .secondary)
+                                }
+                                .frame(width: 58)
+                            }
+                            .disabled(!isQuickAddValid)
+                            .buttonStyle(.plain)
+                        }
+                        .padding(12)
+                        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 12, trailing: 20))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                    }
+
+                    // Lista Elementi
+                    if auth.myItems.isEmpty {
+                        Section {
+                            VStack(spacing: 20) {
+                                Image(systemName: "cart.badge.plus")
+                                    .font(.system(size: 60))
+                                    .foregroundStyle(.secondary)
+                                    .padding(.top, 40)
+                                Text("La tua lista è vuota")
+                                    .font(.headline)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .frame(maxWidth: .infinity)
+                        }
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                    } else {
+                        // Prodotti da comprare
+                        if !activeItems.isEmpty {
+                            Section {
+                                ForEach(activeItems) { item in
+                                    ShoppingItemCard(item: item) {
+                                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                                            auth.toggleMyItem(item)
+                                        }
+                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    }
+                                    .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 6, trailing: 20))
+                                    .listRowBackground(Color.clear)
+                                    .listRowSeparator(.hidden)
+                                    .swipeActions(edge: .trailing) {
+                                        Button(role: .destructive) {
+                                            withAnimation {
+                                                auth.deleteMyItem(item)
+                                            }
+                                        } label: {
+                                            Label("Elimina", systemImage: "trash")
+                                        }
                                     }
                                 }
                             }
                         }
-                        .padding(.horizontal, 24)
-                    }
-                    .padding(.bottom, 12)
-                }
 
-                // Campo aggiungi (solo lista mia)
-                if showInput && isMyList {
-                    HStack(spacing: 12) {
-                        TextField("", text: $newItemText,
-                            prompt: Text("Aggiungi elemento...").foregroundStyle(.white.opacity(0.4)))
-                            .foregroundStyle(.white).focused($inputFocused)
-                            .submitLabel(.done).onSubmit { addItem() }
-                        Button { addItem() } label: {
-                            Image(systemName: "arrow.up.circle.fill").font(.system(size: 28))
-                                .foregroundStyle(newItemText.isEmpty ? .white.opacity(0.25) : .white)
-                        }.disabled(newItemText.trimmingCharacters(in: .whitespaces).isEmpty).buttonStyle(.plain)
-                    }
-                    .padding(.horizontal, 18).frame(height: 54)
-                    .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .padding(.horizontal, 24).padding(.bottom, 12)
-                    .transition(.move(edge: .top).combined(with: .opacity))
-                }
+                        // Prodotti presi
+                        if !completedItems.isEmpty {
+                            Section {
+                                HStack {
+                                    Text("PRODOTTI PRESI")
+                                        .font(.caption.bold())
+                                        .foregroundStyle(.secondary)
+                                        .padding(.leading, 20)
+                                    Spacer()
+                                    Rectangle()
+                                        .frame(height: 1)
+                                        .foregroundStyle(.secondary.opacity(0.2))
+                                }
+                                .padding(.top, 20)
+                                .listRowInsets(EdgeInsets())
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
 
-                // Lista
-                if currentItems.isEmpty {
-                    Spacer()
-                    VStack(spacing: 12) {
-                        Image(systemName: "cart").font(.system(size: 44, weight: .light)).foregroundStyle(.white.opacity(0.2))
-                        Text("Nessun elemento").font(.system(size: 16)).foregroundStyle(.white.opacity(0.3))
-                    }
-                    Spacer()
-                } else {
-                    ScrollView {
-                        LazyVStack(spacing: 10) {
-                            ForEach(currentItems) { item in
-                                ShoppingRow(
-                                    item: item,
-                                    isMine: isMyList,
-                                    onToggle: {
-                                        if isMyList { auth.toggleMyItem(item) }
-                                        else if let uid = selectedFriendUid { auth.toggleFriendItem(item, friendUid: uid) }
-                                    },
-                                    onDelete: isMyList ? { auth.deleteMyItem(item) } : nil
-                                )
+                                ForEach(completedItems) { item in
+                                    ShoppingItemCard(item: item) {
+                                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                                            auth.toggleMyItem(item)
+                                        }
+                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    }
+                                    .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 6, trailing: 20))
+                                    .listRowBackground(Color.clear)
+                                    .listRowSeparator(.hidden)
+                                    .opacity(0.6)
+                                    .swipeActions(edge: .trailing) {
+                                        Button(role: .destructive) {
+                                            withAnimation {
+                                                auth.deleteMyItem(item)
+                                            }
+                                        } label: {
+                                            Label("Elimina", systemImage: "trash")
+                                        }
+                                    }
+                                }
                             }
                         }
-                        .padding(.horizontal, 24).padding(.bottom, 24)
+                    }
+
+                    Section {
+                        Spacer(minLength: 120)
+                    }
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+            }
+            .navigationTitle("Spesa")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    HStack(spacing: 15) {
+                        Button(role: .destructive) {
+                            showingClearAllAlert = true
+                        } label: {
+                            Image(systemName: "trash.fill")
+                                .foregroundColor(.red)
+                        }
+
+                        Button {
+                            showingClearCheckedAlert = true
+                        } label: {
+                            Image(systemName: "checkmark.circle.badge.xmark.fill")
+                                .foregroundColor(.orange)
+                        }
+                    }
+                }
+
+                ToolbarItem(placement: .topBarTrailing) {
+                    HStack(spacing: 15) {
+                        Button {
+                            showingFriendsLists.toggle()
+                        } label: {
+                            Image(systemName: "folder.badge.person.crop")
+                                .foregroundColor(.blue)
+                        }
+
+                        Button {
+                            showingShare.toggle()
+                        } label: {
+                            Image(systemName: "person.badge.plus")
+                                .foregroundColor(.blue)
+                        }
                     }
                 }
             }
-        }
-        .animation(.easeInOut(duration: 0.2), value: showInput)
-        .animation(.easeInOut(duration: 0.15), value: selectedFriendUid)
-    }
-
-    private func addItem() {
-        let t = newItemText.trimmingCharacters(in: .whitespaces)
-        guard !t.isEmpty else { return }
-        auth.addMyItem(t)
-        newItemText = ""
-        inputFocused = true
-    }
-}
-
-// MARK: - List Tab Pill
-
-struct ListTabPill: View {
-    let label: String
-    let isSelected: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Text(label)
-                .font(.system(size: 14, weight: isSelected ? .semibold : .regular))
-                .foregroundStyle(isSelected ? .black : .white.opacity(0.7))
-                .padding(.horizontal, 16).frame(height: 32)
-                .background {
-                    if isSelected { Capsule().fill(Color.white) }
-                    else { Capsule().stroke(Color.white.opacity(0.2), lineWidth: 1) }
+            .alert("Elimina tutto?", isPresented: $showingClearAllAlert) {
+                Button("Annulla", role: .cancel) {}
+                Button("Elimina Tutto", role: .destructive) {
+                    auth.clearAllMyItems()
                 }
-        }
-        .contentShape(Capsule())
-        .buttonStyle(.plain)
-        .animation(.spring(response: 0.3), value: isSelected)
-    }
-}
-
-// MARK: - Shopping Row
-
-struct ShoppingRow: View {
-    let item: ShoppingItem
-    let isMine: Bool
-    let onToggle: () -> Void
-    let onDelete: (() -> Void)?
-
-    var body: some View {
-        HStack(spacing: 16) {
-            Button(action: onToggle) {
-                Image(systemName: item.completed ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 22))
-                    .foregroundStyle(item.completed ? .white : .white.opacity(0.35))
-                    .contentTransition(.symbolEffect(.replace))
-            }.buttonStyle(.plain)
-
-            Text(item.name)
-                .font(.system(size: 16))
-                .foregroundStyle(item.completed ? .white.opacity(0.35) : .white)
-                .strikethrough(item.completed, color: .white.opacity(0.35))
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-            if let del = onDelete {
-                Button(action: del) {
-                    Image(systemName: "trash").font(.system(size: 15)).foregroundStyle(.white.opacity(0.25))
-                }.buttonStyle(.plain)
+            } message: {
+                Text("Sei sicuro/a di voler eliminare tutti i prodotti dalla lista?")
+            }
+            .alert("Elimina completati?", isPresented: $showingClearCheckedAlert) {
+                Button("Annulla", role: .cancel) {}
+                Button("Elimina Completati", role: .destructive) {
+                    auth.clearCompletedMyItems()
+                }
+            } message: {
+                Text("Sei sicuro/a di voler eliminare solo i prodotti già completati?")
+            }
+            .sheet(isPresented: $showingShare) {
+                ShareView(isPresented: $showingShare)
+            }
+            .sheet(isPresented: $showingFriendsLists) {
+                FriendsListView(isPresented: $showingFriendsLists)
             }
         }
-        .padding(.horizontal, 18).frame(minHeight: 54)
+    }
+
+    private func addQuickItem() {
+        let name = quickItemName.trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty else { return }
+        let qty = (selectedQty == "ND") ? "" : selectedQty
+
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
+            auth.addMyItem(name: name, quantity: qty)
+            quickItemName = ""
+            isNameFocused = true
+        }
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+    }
+
+    func statCard(title: String, value: String, icon: String, color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Image(systemName: icon)
+                    .foregroundColor(color)
+                Text(title)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Text(value)
+                .font(.title2.bold())
+                .foregroundStyle(.primary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
         .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+}
+
+// MARK: - Shopping Item Card
+
+struct ShoppingItemCard: View {
+    let item: ShoppingItem
+    let onToggle: () -> Void
+
+    var body: some View {
+        HStack(spacing: 15) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(item.name)
+                    .font(.headline)
+                    .strikethrough(false)
+                    .foregroundStyle(item.completed ? .secondary : .primary)
+
+                if !item.quantity.isEmpty {
+                    Text(item.quantity)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Spacer()
+
+            Button {
+                onToggle()
+            } label: {
+                Image(systemName: item.completed ? "checkmark.circle.fill" : "circle")
+                    .font(.title2)
+                    .foregroundColor(item.completed ? .green : .secondary)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding()
+        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+}
+
+// MARK: - Share & Add Friend View
+
+struct ShareView: View {
+    @Binding var isPresented: Bool
+    @State private var auth = AuthManager.shared
+    @State private var friendCode = ""
+    @State private var friendName = ""
+    @State private var showCopied = false
+
+    var displayCode: String {
+        auth.friendCode
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    VStack(spacing: 16) {
+                        Text(displayCode.isEmpty ? "Caricamento..." : displayCode)
+                            .font(.system(size: 26, weight: .bold, design: .monospaced))
+                            .tracking(4)
+                            .foregroundColor(.primary)
+                            .padding(.top, 8)
+
+                        Button {
+                            UIPasteboard.general.string = displayCode
+                            withAnimation { showCopied = true }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                                withAnimation { showCopied = false }
+                            }
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        } label: {
+                            Label(
+                                showCopied ? "Copiato!" : "Copia Codice",
+                                systemImage: showCopied ? "checkmark.circle.fill" : "doc.on.doc"
+                            )
+                            .font(.subheadline.bold())
+                            .foregroundColor(showCopied ? .green : .blue)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(Capsule().fill(showCopied ? Color.green.opacity(0.12) : Color.blue.opacity(0.12)))
+                        }
+
+                        Text("Condividi il tuo codice con amici o parenti per collegare le liste.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                }
+
+                Section("Aggiungi Amico") {
+                    TextField("Codice Amico (6 cifre)", text: $friendCode)
+                        .keyboardType(.numberPad)
+                    TextField("Nome o Soprannome", text: $friendName)
+
+                    if let error = auth.errorMessage {
+                        Text(error).font(.caption).foregroundColor(.red)
+                    }
+
+                    Button("Aggiungi Amico") {
+                        Task {
+                            await auth.addFriend(code: friendCode, nickname: friendName)
+                            if auth.errorMessage == nil {
+                                friendCode = ""
+                                friendName = ""
+                                UINotificationFeedbackGenerator().notificationOccurred(.success)
+                                isPresented = false
+                            }
+                        }
+                    }
+                    .disabled(friendCode.count != 6 || friendName.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+            }
+            .navigationTitle("Condivisione")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Chiudi") { isPresented = false }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Friends List Sheet
+
+struct FriendsListView: View {
+    @Binding var isPresented: Bool
+    @State private var auth = AuthManager.shared
+
+    var body: some View {
+        NavigationStack {
+            List {
+                if auth.friends.isEmpty {
+                    Section {
+                        Text("Non hai ancora aggiunto amici.")
+                            .foregroundStyle(.secondary)
+                    }
+                    .listRowBackground(Color.clear)
+                } else {
+                    ForEach(auth.friends) { friend in
+                        NavigationLink {
+                            FriendDetailView(friend: friend)
+                        } label: {
+                            HStack(spacing: 12) {
+                                Image(systemName: "person.circle.fill")
+                                    .foregroundColor(.blue)
+                                    .font(.title2)
+
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(friend.nickname)
+                                        .font(.headline)
+                                    Text("#\(friend.friendCode)")
+                                        .font(.caption.monospaced())
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                        .swipeActions(edge: .trailing) {
+                            Button(role: .destructive) {
+                                auth.removeFriend(friend.id)
+                            } label: {
+                                Label("Elimina", systemImage: "trash")
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Liste Amici")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Chiudi") { isPresented = false }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Friend Detail View
+
+struct FriendDetailView: View {
+    let friend: Friend
+    @State private var auth = AuthManager.shared
+
+    var friendItems: [ShoppingItem] {
+        auth.friendsItems[friend.id] ?? []
+    }
+
+    var activeItems: [ShoppingItem] {
+        friendItems.filter { !$0.completed }
+    }
+
+    var completedItems: [ShoppingItem] {
+        friendItems.filter { $0.completed }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
+    var body: some View {
+        ZStack {
+            Color(uiColor: .systemBackground).ignoresSafeArea()
+
+            List {
+                if friendItems.isEmpty {
+                    Section {
+                        VStack(spacing: 16) {
+                            Image(systemName: "cart.badge.plus")
+                                .font(.system(size: 50))
+                                .foregroundStyle(.secondary)
+                                .padding(.top, 40)
+                            Text("La lista di \(friend.nickname) è vuota")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                } else {
+                    if !activeItems.isEmpty {
+                        Section {
+                            ForEach(activeItems) { item in
+                                ShoppingItemCard(item: item) {
+                                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                                        auth.toggleFriendItem(item, friendUid: friend.id)
+                                    }
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                }
+                                .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 6, trailing: 20))
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
+                            }
+                        }
+                    }
+
+                    if !completedItems.isEmpty {
+                        Section {
+                            HStack {
+                                Text("PRODOTTI PRESI")
+                                    .font(.caption.bold())
+                                    .foregroundStyle(.secondary)
+                                    .padding(.leading, 20)
+                                Spacer()
+                                Rectangle()
+                                    .frame(height: 1)
+                                    .foregroundStyle(.secondary.opacity(0.2))
+                            }
+                            .padding(.top, 16)
+                            .listRowInsets(EdgeInsets())
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+
+                            ForEach(completedItems) { item in
+                                ShoppingItemCard(item: item) {
+                                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                                        auth.toggleFriendItem(item, friendUid: friend.id)
+                                    }
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                }
+                                .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 6, trailing: 20))
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
+                                .opacity(0.6)
+                            }
+                        }
+                    }
+                }
+            }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+        }
+        .navigationTitle(friend.nickname)
     }
 }
 
@@ -373,10 +791,11 @@ struct CalendarView: View {
     }
 }
 
-// MARK: - Profile
+// MARK: - Impostazioni / Profile
 
 struct ProfileView: View {
     @State private var auth = AuthManager.shared
+    @State private var showingShare = false
     private let bg = Color(red: 28/255, green: 28/255, blue: 30/255)
 
     var body: some View {
@@ -415,9 +834,12 @@ struct ProfileView: View {
 
                     // Bottoni
                     VStack(spacing: 12) {
-                        NavigationLink(destination: FriendsView()) {
+                        Button {
+                            showingShare = true
+                        } label: {
                             AuthPill(label: "Amici", style: .outlined)
-                        }.contentShape(Capsule()).buttonStyle(.plain)
+                        }
+                        .contentShape(Capsule())
 
                         NavigationLink(destination: IconPickerView()) {
                             AuthPill(label: "Icona", style: .outlined)
@@ -432,124 +854,12 @@ struct ProfileView: View {
                     Spacer().frame(height: 20)
                 }
             }
-            .toolbarVisibility(.hidden, for: .navigationBar)
-        }
-    }
-}
-
-// MARK: - Friends View
-
-struct FriendsView: View {
-    @State private var auth = AuthManager.shared
-    @State private var codeInput = ""
-    @State private var nicknameInput = ""
-    @State private var showAdd = false
-    @FocusState private var codeFocused: Bool
-    @Environment(\.dismiss) private var dismiss
-    private let bg = Color(red: 28/255, green: 28/255, blue: 30/255)
-
-    var body: some View {
-        ZStack {
-            bg.ignoresSafeArea()
-            VStack(spacing: 0) {
-
-                // Header
-                HStack {
-                    Button { dismiss() } label: {
-                        Image(systemName: "chevron.left").font(.system(size: 17, weight: .semibold))
-                            .foregroundStyle(.white).frame(width: 38, height: 38).glassEffect(.regular, in: Circle())
-                    }.buttonStyle(.plain).contentShape(Circle())
-                    Spacer()
-                    Button {
-                        withAnimation(.spring(response: 0.35)) { showAdd.toggle() }
-                        if showAdd { codeFocused = true }
-                    } label: {
-                        Image(systemName: showAdd ? "xmark" : "person.badge.plus")
-                            .font(.system(size: 16, weight: .semibold)).foregroundStyle(.white)
-                            .frame(width: 38, height: 38).glassEffect(.regular, in: Circle())
-                    }.contentShape(Circle())
-                }.padding(.horizontal, 24).padding(.top, 20).padding(.bottom, 28)
-
-                Text("Amici").font(.title.bold()).foregroundStyle(.white)
-                    .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 24).padding(.bottom, 20)
-
-                // Form aggiungi amico
-                if showAdd {
-                    VStack(spacing: 10) {
-                        AuthField(icon: "number", placeholder: "Codice a 6 cifre", text: $codeInput)
-                            .keyboardType(.numberPad)
-                        AuthField(icon: "person", placeholder: "Come vuoi chiamarlo?", text: $nicknameInput)
-
-                        if let msg = auth.errorMessage {
-                            Text(msg).font(.footnote).foregroundStyle(.red.opacity(0.9))
-                                .multilineTextAlignment(.center)
-                                .transition(.opacity)
-                        }
-
-                        Button {
-                            Task {
-                                await auth.addFriend(code: codeInput, nickname: nicknameInput)
-                                if auth.errorMessage == nil {
-                                    codeInput = ""; nicknameInput = ""
-                                    withAnimation { showAdd = false }
-                                }
-                            }
-                        } label: {
-                            if auth.isLoading { AuthPill(label: "", style: .primary, isLoading: true) }
-                            else { AuthPill(label: "Aggiungi", style: .primary) }
-                        }
-                        .contentShape(Capsule()).disabled(auth.isLoading)
-                    }
-                    .padding(.horizontal, 24).padding(.bottom, 20)
-                    .transition(.move(edge: .top).combined(with: .opacity))
-                }
-
-                // Lista amici
-                if auth.friends.isEmpty && !showAdd {
-                    Spacer()
-                    VStack(spacing: 10) {
-                        Image(systemName: "person.2").font(.system(size: 44, weight: .light))
-                            .foregroundStyle(.white.opacity(0.2))
-                        Text("Nessun amico aggiunto").font(.system(size: 16))
-                            .foregroundStyle(.white.opacity(0.3))
-                        Text("Tocca + per aggiungerne uno").font(.system(size: 14))
-                            .foregroundStyle(.white.opacity(0.2))
-                    }
-                    Spacer()
-                } else {
-                    ScrollView {
-                        LazyVStack(spacing: 10) {
-                            ForEach(auth.friends) { friend in
-                                HStack(spacing: 16) {
-                                    VStack(alignment: .leading, spacing: 3) {
-                                        Text(friend.nickname)
-                                            .font(.system(size: 16, weight: .medium))
-                                            .foregroundStyle(.white)
-                                        Text("#\(friend.friendCode)")
-                                            .font(.system(size: 13, design: .monospaced))
-                                            .foregroundStyle(.white.opacity(0.4))
-                                    }
-                                    Spacer()
-                                    Button { auth.removeFriend(friend.id) } label: {
-                                        Image(systemName: "person.badge.minus")
-                                            .font(.system(size: 16))
-                                            .foregroundStyle(.red.opacity(0.6))
-                                    }.buttonStyle(.plain)
-                                }
-                                .padding(.horizontal, 18).frame(minHeight: 60)
-                                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                            }
-                        }
-                        .padding(.horizontal, 24).padding(.bottom, 24)
-                    }
-                }
+            .navigationTitle("Impostazioni")
+            .navigationBarTitleDisplayMode(.inline)
+            .sheet(isPresented: $showingShare) {
+                ShareView(isPresented: $showingShare)
             }
         }
-        .navigationBarBackButtonHidden(true)
-        .toolbarVisibility(.hidden, for: .navigationBar)
-        .animation(.easeInOut(duration: 0.2), value: showAdd)
-        .animation(.easeInOut(duration: 0.2), value: auth.errorMessage)
-        .onAppear { auth.errorMessage = nil }
     }
 }
 
