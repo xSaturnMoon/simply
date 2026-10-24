@@ -2,6 +2,7 @@ import FirebaseAuth
 import FirebaseFirestore
 import SwiftUI
 import UserNotifications
+import WidgetKit
 
 // MARK: - Models
 
@@ -55,6 +56,22 @@ struct Friend: Identifiable, Equatable, Codable {
     var friendCode: String
 }
 
+public struct WidgetReminderItem: Codable, Identifiable {
+    public let id: String
+    public let title: String
+    public let timeString: String
+    public let isCompleted: Bool
+    public let date: Date
+
+    public init(id: String, title: String, timeString: String, isCompleted: Bool, date: Date) {
+        self.id = id
+        self.title = title
+        self.timeString = timeString
+        self.isCompleted = isCompleted
+        self.date = date
+    }
+}
+
 // MARK: - AuthManager
 
 @MainActor
@@ -96,11 +113,16 @@ class AuthManager {
             if !localItems.isEmpty {
                 self.myItems = localItems
             }
+            let localFriends = loadFriendsFromLocalCache(uid: user.uid)
+            if !localFriends.isEmpty {
+                self.friends = localFriends
+            }
             let localEvents = loadCalendarFromLocalCache(uid: user.uid)
             if !localEvents.isEmpty {
                 self.calendarEvents = localEvents
                 purgeOldEvents(uid: user.uid)
             }
+            cleanOrphanNotifications()
         }
         Auth.auth().addStateDidChangeListener { [weak self] _, user in
             Task { @MainActor in
@@ -110,11 +132,16 @@ class AuthManager {
                     if !localItems.isEmpty && (self?.myItems.isEmpty ?? true) {
                         self?.myItems = localItems
                     }
+                    let localFriends = self?.loadFriendsFromLocalCache(uid: user.uid) ?? []
+                    if !localFriends.isEmpty && (self?.friends.isEmpty ?? true) {
+                        self?.friends = localFriends
+                    }
                     let localEvents = self?.loadCalendarFromLocalCache(uid: user.uid) ?? []
                     if !localEvents.isEmpty && (self?.calendarEvents.isEmpty ?? true) {
                         self?.calendarEvents = localEvents
                         self?.purgeOldEvents(uid: user.uid)
                     }
+                    self?.cleanOrphanNotifications()
                     await self?.loadProfile(uid: user.uid)
                     self?.startFriendsListener(uid: user.uid)
                     self?.startMyItemsListener(uid: user.uid)
@@ -147,6 +174,21 @@ class AuthManager {
         return generateCode()
     }
 
+    // Cache locale di sicurezza per gli amici: nessun ritardo e zero perdite!
+    private func saveFriendsToLocalCache(_ friends: [Friend], uid: String) {
+        if let data = try? JSONEncoder().encode(friends) {
+            UserDefaults.standard.set(data, forKey: "simply_friends_backup_\(uid)")
+        }
+    }
+
+    private func loadFriendsFromLocalCache(uid: String) -> [Friend] {
+        guard let data = UserDefaults.standard.data(forKey: "simply_friends_backup_\(uid)"),
+              let friends = try? JSONDecoder().decode([Friend].self, from: data) else {
+            return []
+        }
+        return friends
+    }
+
     // Cache locale di sicurezza per la spesa: i dati non andranno mai persi!
     private func saveMyItemsToLocalCache(_ items: [ShoppingItem], uid: String) {
         if let data = try? JSONEncoder().encode(items) {
@@ -167,6 +209,35 @@ class AuthManager {
         if let data = try? JSONEncoder().encode(events) {
             UserDefaults.standard.set(data, forKey: "simply_calendar_backup_\(uid)")
         }
+        updateWidgetReminders(events)
+    }
+
+    // Condivisione con WidgetKit per i widget della schermata Home
+    private func updateWidgetReminders(_ events: [CalendarEvent]) {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm"
+
+        let widgetItems = events
+            .filter { !$0.isCompleted }
+            .sorted { $0.date < $1.date }
+            .prefix(15)
+            .map { ev in
+                WidgetReminderItem(
+                    id: ev.id,
+                    title: ev.title,
+                    timeString: formatter.string(from: ev.startTime),
+                    isCompleted: ev.isCompleted,
+                    date: ev.date
+                )
+            }
+
+        if let data = try? JSONEncoder().encode(Array(widgetItems)) {
+            if let groupDefaults = UserDefaults(suiteName: "group.com.saturnmoon.simply") {
+                groupDefaults.set(data, forKey: "simply_widget_reminders")
+            }
+            UserDefaults.standard.set(data, forKey: "simply_widget_reminders")
+        }
+        WidgetCenter.shared.reloadAllTimelines()
     }
 
     private func loadCalendarFromLocalCache(uid: String) -> [CalendarEvent] {
@@ -192,11 +263,27 @@ class AuthManager {
 
         let expiredIds = expired.map { $0.id }
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: expiredIds)
+        UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: expiredIds)
 
         Task {
             for id in expiredIds {
                 try? await db.collection("users").document(uid)
                     .collection("calendar_events").document(id).delete()
+            }
+        }
+    }
+
+    // Pulizia notifiche fantasma/orfane (elimina qualsiasi notifica rimasta programmata per eventi eliminati)
+    func cleanOrphanNotifications() {
+        UNUserNotificationCenter.current().getPendingNotificationRequests { [weak self] requests in
+            guard let self else { return }
+            Task { @MainActor in
+                let activeIds = Set(self.calendarEvents.filter { $0.reminderEnabled && !$0.isCompleted }.map { $0.id })
+                let orphanIds = requests.map { $0.identifier }.filter { !activeIds.contains($0) }
+                if !orphanIds.isEmpty {
+                    UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: orphanIds)
+                    UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: orphanIds)
+                }
             }
         }
     }
@@ -341,6 +428,7 @@ class AuthManager {
                             self.friends = newFriends
                         }
                     }
+                    self.saveFriendsToLocalCache(newFriends, uid: uid)
 
                     for f in newFriends {
                         self.startFriendItemsListener(friendUid: f.id)
@@ -412,6 +500,7 @@ class AuthManager {
                 withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                     friends.append(newFriend)
                 }
+                saveFriendsToLocalCache(friends, uid: uid)
             }
             startFriendItemsListener(friendUid: friendUid)
         } catch {
@@ -425,6 +514,7 @@ class AuthManager {
         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
             friends.removeAll { $0.id == friendUid }
         }
+        saveFriendsToLocalCache(friends, uid: uid)
         friendsListeners[friendUid]?.remove()
         friendsListeners.removeValue(forKey: friendUid)
         friendsItems.removeValue(forKey: friendUid)
@@ -717,10 +807,12 @@ class AuthManager {
                         }
                     }
                     self.saveCalendarToLocalCache(validEvents, uid: uid)
+                    self.cleanOrphanNotifications()
 
                     // Elimina dal database Firestore i vecchi appuntamenti scaduti
                     if !expiredIds.isEmpty {
                         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: expiredIds)
+                        UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: expiredIds)
                         Task {
                             for oldId in expiredIds {
                                 try? await self.db.collection("users").document(uid)
@@ -833,7 +925,10 @@ class AuthManager {
         }
         saveCalendarToLocalCache(calendarEvents, uid: uid)
 
+        // Rimuove immediatamente sia le notifiche in attesa sia quelle già consegnate
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [event.id])
+        UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: [event.id])
+        cleanOrphanNotifications()
 
         Task {
             do {
@@ -856,6 +951,15 @@ class AuthManager {
         }
 
         let newStatus = !event.isCompleted
+
+        // Se l'evento è stato completato, cancella la notifica per evitare che suoni inutilmente
+        if newStatus {
+            UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [event.id])
+            UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: [event.id])
+        } else if event.reminderEnabled {
+            scheduleNotification(for: event)
+        }
+
         Task {
             do {
                 try await db.collection("users").document(uid)

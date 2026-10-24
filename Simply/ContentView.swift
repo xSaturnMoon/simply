@@ -23,7 +23,7 @@ struct ContentView: View {
 // MARK: - Landing
 
 struct LandingView: View {
-    private let bg = Color(red: 28/255, green: 28/255, blue: 30/255)
+    private let bg = Color.black
 
     var body: some View {
         ZStack {
@@ -94,7 +94,7 @@ struct RegisterView: View {
     @State private var showPassword = false
     @State private var showConfirm = false
     @Environment(\.dismiss) private var dismiss
-    private let bg = Color(red: 28/255, green: 28/255, blue: 30/255)
+    private let bg = Color.black
 
     var body: some View {
         ZStack {
@@ -102,8 +102,13 @@ struct RegisterView: View {
             VStack(spacing: 0) {
                 HStack {
                     Button { dismiss() } label: {
-                        Image(systemName: "chevron.left").font(.system(size: 17, weight: .semibold))
-                            .foregroundStyle(.white).frame(width: 38, height: 38).glassEffect(.regular, in: Circle())
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 38, height: 38)
+                            .background(.ultraThinMaterial)
+                            .clipShape(Circle())
+                            .overlay(Circle().stroke(Color.white.opacity(0.12), lineWidth: 1))
                     }
                     .buttonStyle(.plain)
                     .contentShape(Circle())
@@ -152,7 +157,7 @@ struct LoginView: View {
     @State private var password = ""
     @State private var showPassword = false
     @Environment(\.dismiss) private var dismiss
-    private let bg = Color(red: 28/255, green: 28/255, blue: 30/255)
+    private let bg = Color.black
 
     var body: some View {
         ZStack {
@@ -160,8 +165,13 @@ struct LoginView: View {
             VStack(spacing: 0) {
                 HStack {
                     Button { dismiss() } label: {
-                        Image(systemName: "chevron.left").font(.system(size: 17, weight: .semibold))
-                            .foregroundStyle(.white).frame(width: 38, height: 38).glassEffect(.regular, in: Circle())
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 38, height: 38)
+                            .background(.ultraThinMaterial)
+                            .clipShape(Circle())
+                            .overlay(Circle().stroke(Color.white.opacity(0.12), lineWidth: 1))
                     }
                     .buttonStyle(.plain)
                     .contentShape(Circle())
@@ -204,19 +214,26 @@ struct LoginView: View {
 // MARK: - Main App
 
 struct MainAppView: View {
+    @State private var selectedTab: Int = 0
+
     var body: some View {
-        TabView {
-            Tab("Spesa", systemImage: "cart") {
+        TabView(selection: $selectedTab) {
+            Tab("Spesa", systemImage: "cart", value: 0) {
                 ShoppingListView()
             }
-            Tab("Calendario", systemImage: "calendar") {
+            Tab("Calendario", systemImage: "calendar", value: 1) {
                 CalendarView()
             }
-            Tab("Profilo", systemImage: "person.circle") {
+            Tab("Profilo", systemImage: "person.circle", value: 2) {
                 ProfileView()
             }
         }
         .tint(.blue)
+        .onOpenURL { url in
+            if url.scheme == "simply" && url.host == "calendar" {
+                selectedTab = 1
+            }
+        }
     }
 }
 
@@ -1058,6 +1075,195 @@ struct AppleEventCard: View {
     }
 }
 
+// MARK: - Time Picker Field
+
+/// Mostra il selettore orario in base alla preferenza utente:
+/// "Apple" → wheel nativo, "Manuale" → digitazione rapida con tastierino numerico (Ore : Minuti)
+struct TimePickerField: View {
+    let label: String
+    @Binding var time: Date
+    var isNewEvent: Bool = false
+    @AppStorage("timePickerMode") private var timePickerMode: String = "Apple"
+
+    var body: some View {
+        if timePickerMode == "Manuale" {
+            ManualTimeInputField(label: label, time: $time, isNewEvent: isNewEvent)
+        } else {
+            DatePicker(label, selection: $time, displayedComponents: .hourAndMinute)
+                .datePickerStyle(.wheel)
+                .labelsHidden()
+                .frame(maxWidth: .infinity)
+        }
+    }
+}
+
+/// Inserimento orario manuale scrivendo direttamente con la tastiera numerica:
+/// Due caselle grandi e pulite [ ORE ] : [ MINUTI ].
+struct ManualTimeInputField: View {
+    let label: String
+    @Binding var time: Date
+    var isNewEvent: Bool = false
+
+    @State private var hourText: String = ""
+    @State private var minuteText: String = ""
+    @State private var clearHourOnNextType = false
+    @State private var clearMinuteOnNextType = false
+    @FocusState private var focusedField: TimeField?
+
+    enum TimeField: Hashable {
+        case hour
+        case minute
+    }
+
+    var body: some View {
+        VStack(spacing: 8) {
+            HStack(spacing: 12) {
+                Spacer()
+
+                // ORE BOX
+                VStack(spacing: 4) {
+                    TextField("00", text: $hourText)
+                        .keyboardType(.numberPad)
+                        .focused($focusedField, equals: .hour)
+                        .multilineTextAlignment(.center)
+                        .font(.system(size: 36, weight: .semibold, design: .rounded))
+                        .frame(width: 82, height: 60)
+                        .background(Color(uiColor: .tertiarySystemFill))
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14)
+                                .stroke(focusedField == .hour ? Color.blue : Color.clear, lineWidth: 2)
+                        )
+                        .onChange(of: focusedField) { _, newField in
+                            if newField == .hour {
+                                clearHourOnNextType = !hourText.isEmpty
+                            } else if newField == .minute {
+                                clearMinuteOnNextType = !minuteText.isEmpty
+                            }
+                        }
+                        .onChange(of: hourText) { oldValue, newValue in
+                            handleHourInput(old: oldValue, new: newValue)
+                        }
+
+                    Text("Ore")
+                        .font(.caption.bold())
+                        .foregroundStyle(.secondary)
+                }
+
+                Text(":")
+                    .font(.system(size: 34, weight: .bold, design: .rounded))
+                    .foregroundStyle(.secondary)
+                    .padding(.bottom, 20)
+
+                // MINUTI BOX
+                VStack(spacing: 4) {
+                    TextField("00", text: $minuteText)
+                        .keyboardType(.numberPad)
+                        .focused($focusedField, equals: .minute)
+                        .multilineTextAlignment(.center)
+                        .font(.system(size: 36, weight: .semibold, design: .rounded))
+                        .frame(width: 82, height: 60)
+                        .background(Color(uiColor: .tertiarySystemFill))
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14)
+                                .stroke(focusedField == .minute ? Color.blue : Color.clear, lineWidth: 2)
+                        )
+                        .onChange(of: minuteText) { oldValue, newValue in
+                            handleMinuteInput(old: oldValue, new: newValue)
+                        }
+
+                    Text("Minuti")
+                        .font(.caption.bold())
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+            }
+            .padding(.vertical, 6)
+        }
+        .onAppear {
+            if !isNewEvent {
+                let cal = Calendar.current
+                let h = cal.component(.hour, from: time)
+                let m = cal.component(.minute, from: time)
+                hourText = String(format: "%02d", h)
+                minuteText = String(format: "%02d", m)
+            }
+        }
+    }
+
+    private func handleHourInput(old: String, new: String) {
+        let digits = new.filter { $0.isNumber }
+
+        var effective = digits
+        if clearHourOnNextType && digits.count > old.filter({ $0.isNumber }).count {
+            if let lastChar = digits.last {
+                effective = String(lastChar)
+            }
+            clearHourOnNextType = false
+        } else if clearHourOnNextType && digits.count < old.filter({ $0.isNumber }).count {
+            clearHourOnNextType = false
+        }
+
+        if effective.count > 2 {
+            effective = String(effective.prefix(2))
+        }
+
+        if hourText != effective {
+            hourText = effective
+        }
+
+        if let h = Int(effective) {
+            let validH = min(h, 23)
+            updateTime(hour: validH, minute: Int(minuteText) ?? 0)
+
+            // Auto-focus al campo minuti se l'utente ha inserito 2 cifre o un numero da 3 a 9
+            if effective.count == 2 || (effective.count == 1 && h >= 3) {
+                clearMinuteOnNextType = !minuteText.isEmpty
+                focusedField = .minute
+            }
+        }
+    }
+
+    private func handleMinuteInput(old: String, new: String) {
+        let digits = new.filter { $0.isNumber }
+
+        var effective = digits
+        if clearMinuteOnNextType && digits.count > old.filter({ $0.isNumber }).count {
+            if let lastChar = digits.last {
+                effective = String(lastChar)
+            }
+            clearMinuteOnNextType = false
+        } else if clearMinuteOnNextType && digits.count < old.filter({ $0.isNumber }).count {
+            clearMinuteOnNextType = false
+        }
+
+        if effective.count > 2 {
+            effective = String(effective.prefix(2))
+        }
+
+        if minuteText != effective {
+            minuteText = effective
+        }
+
+        if let m = Int(effective) {
+            let validM = min(m, 59)
+            updateTime(hour: Int(hourText) ?? 0, minute: validM)
+        }
+    }
+
+    private func updateTime(hour: Int, minute: Int) {
+        let cal = Calendar.current
+        var comps = cal.dateComponents([.year, .month, .day], from: time)
+        comps.hour = min(max(hour, 0), 23)
+        comps.minute = min(max(minute, 0), 59)
+        if let newDate = cal.date(from: comps) {
+            time = newDate
+        }
+    }
+}
+
 // MARK: - AddEventView
 
 struct AddEventView: View {
@@ -1096,14 +1302,14 @@ struct AddEventView: View {
 
                 Section("Quando") {
                     DatePicker("Giorno", selection: $date, displayedComponents: .date)
-                    DatePicker("Orario", selection: $startTime, displayedComponents: .hourAndMinute)
+                    TimePickerField(label: "Orario", time: $startTime, isNewEvent: true)
                 }
 
                 Section("Promemoria") {
                     Toggle("🔔 Avvisami con notifica", isOn: $reminderEnabled)
 
                     if reminderEnabled {
-                        DatePicker("Orario Notifica", selection: $reminderTime, displayedComponents: .hourAndMinute)
+                        TimePickerField(label: "Orario Notifica", time: $reminderTime, isNewEvent: true)
                     }
                 }
             }
@@ -1170,14 +1376,14 @@ struct EditEventView: View {
 
                 Section("Quando") {
                     DatePicker("Giorno", selection: $date, displayedComponents: .date)
-                    DatePicker("Orario", selection: $startTime, displayedComponents: .hourAndMinute)
+                    TimePickerField(label: "Orario", time: $startTime, isNewEvent: false)
                 }
 
                 Section("Promemoria") {
                     Toggle("🔔 Avvisami con notifica", isOn: $reminderEnabled)
 
                     if reminderEnabled {
-                        DatePicker("Orario Notifica", selection: $reminderTime, displayedComponents: .hourAndMinute)
+                        TimePickerField(label: "Orario Notifica", time: $reminderTime, isNewEvent: false)
                     }
                 }
 
@@ -1289,7 +1495,7 @@ struct AllRemindersView: View {
 struct ProfileView: View {
     @State private var auth = AuthManager.shared
     @State private var isCopied = false
-    private let bg = Color(red: 28/255, green: 28/255, blue: 30/255)
+    private let bg = Color.black
 
     var body: some View {
         NavigationStack {
@@ -1355,6 +1561,12 @@ struct ProfileView: View {
                         .buttonStyle(.plain)
                         .contentShape(Capsule())
 
+                        NavigationLink(destination: ClockSettingsView()) {
+                            AuthPill(label: "Orologio", style: .outlined)
+                        }
+                        .buttonStyle(.plain)
+                        .contentShape(Capsule())
+
                         Button { auth.logout() } label: {
                             AuthPill(label: "Esci", style: .outlined)
                         }
@@ -1387,7 +1599,7 @@ struct FriendsView: View {
     @State private var showAdd = false
     @FocusState private var codeFocused: Bool
     @Environment(\.dismiss) private var dismiss
-    private let bg = Color(red: 28/255, green: 28/255, blue: 30/255)
+    private let bg = Color.black
 
     var body: some View {
         ZStack {
@@ -1526,6 +1738,153 @@ struct FriendsView: View {
     }
 }
 
+// MARK: - Clock Settings View
+
+struct ClockSettingsView: View {
+    @Environment(\.dismiss) private var dismiss
+    @AppStorage("timePickerMode") private var timePickerMode: String = "Apple"
+    @State private var previewTime: Date = Date()
+    private let bg = Color.black
+
+    var body: some View {
+        ZStack {
+            bg.ignoresSafeArea()
+            VStack(spacing: 0) {
+                // Header con Back
+                HStack {
+                    Button { dismiss() } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 38, height: 38)
+                            .background(.ultraThinMaterial)
+                            .clipShape(Circle())
+                            .overlay(Circle().stroke(Color.white.opacity(0.12), lineWidth: 1))
+                    }
+                    .buttonStyle(.plain)
+                    .contentShape(Circle())
+
+                    Spacer()
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 20)
+                .padding(.bottom, 28)
+
+                // Titolo & Descrizione
+                VStack(spacing: 6) {
+                    Text("Orologio")
+                        .font(.title.bold())
+                        .foregroundStyle(.white)
+                    Text("Scegli come inserire l'orario negli impegni")
+                        .font(.subheadline)
+                        .foregroundStyle(.white.opacity(0.45))
+                }
+                .padding(.bottom, 36)
+
+                // Opzioni
+                VStack(spacing: 16) {
+                    clockOptionCard(
+                        mode: "Apple",
+                        icon: "clock.fill",
+                        title: "Apple",
+                        description: "Ruota verticale classica dell'app Orologio"
+                    )
+
+                    clockOptionCard(
+                        mode: "Manuale",
+                        icon: "keyboard.fill",
+                        title: "Manuale",
+                        description: "Tastierino numerico rapido con caselle Ore : Minuti"
+                    )
+                }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 32)
+
+                // Anteprima dal vivo
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("ANTEPRIMA")
+                        .font(.caption.bold())
+                        .foregroundStyle(.white.opacity(0.4))
+                        .padding(.horizontal, 28)
+
+                    VStack(spacing: 14) {
+                        TimePickerField(label: "Orario Prova", time: $previewTime, isNewEvent: false)
+
+                        Text(timePickerMode == "Apple" ? "Gira la ruota per selezionare l'orario" : "Tocca le caselle per digitare l'orario con la tastiera")
+                            .font(.caption)
+                            .foregroundStyle(.white.opacity(0.5))
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(18)
+                    .frame(maxWidth: .infinity)
+                    .background(.ultraThinMaterial)
+                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                    )
+                    .padding(.horizontal, 24)
+                }
+
+                Spacer()
+            }
+        }
+        .navigationBarBackButtonHidden(true)
+        .toolbarVisibility(.hidden, for: .navigationBar)
+    }
+
+    @ViewBuilder
+    private func clockOptionCard(mode: String, icon: String, title: String, description: String) -> some View {
+        let isSelected = (timePickerMode == mode)
+
+        Button {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                timePickerMode = mode
+            }
+        } label: {
+            HStack(spacing: 16) {
+                Image(systemName: icon)
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(isSelected ? .blue : .white.opacity(0.6))
+                    .frame(width: 44, height: 44)
+                    .background(Color.white.opacity(isSelected ? 0.12 : 0.05))
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(.white)
+                    Text(description)
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.45))
+                }
+
+                Spacer()
+
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundStyle(.blue)
+                } else {
+                    Circle()
+                        .stroke(Color.white.opacity(0.2), lineWidth: 1.5)
+                        .frame(width: 20, height: 20)
+                }
+            }
+            .padding(16)
+            .background(.ultraThinMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(isSelected ? Color.blue.opacity(0.6) : Color.white.opacity(0.1), lineWidth: isSelected ? 1.5 : 1)
+            )
+            .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+}
+
 // MARK: - Icon Picker
 
 struct AppIconOption: Identifiable {
@@ -1537,7 +1896,7 @@ struct AppIconOption: Identifiable {
 struct IconPickerView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var currentIcon: String? = UIApplication.shared.alternateIconName
-    private let bg = Color(red: 28/255, green: 28/255, blue: 30/255)
+    private let bg = Color.black
     private let icons: [AppIconOption] = [
         AppIconOption(id: "default",       assetName: nil,              label: "Originale"),
         AppIconOption(id: "AppIconPurple", assetName: "AppIconPurple",  label: "Viola"),
@@ -1553,7 +1912,11 @@ struct IconPickerView: View {
                 HStack {
                     Button { dismiss() } label: {
                         Image(systemName: "chevron.left").font(.system(size: 17, weight: .semibold))
-                            .foregroundStyle(.white).frame(width: 38, height: 38).glassEffect(.regular, in: Circle())
+                            .foregroundStyle(.white)
+                            .frame(width: 38, height: 38)
+                            .background(.ultraThinMaterial)
+                            .clipShape(Circle())
+                            .overlay(Circle().stroke(Color.white.opacity(0.12), lineWidth: 1))
                     }
                     .buttonStyle(.plain)
                     .contentShape(Circle())
@@ -1675,7 +2038,12 @@ struct AuthField: View {
                 .keyboardType(keyboardType)
         }
         .padding(.horizontal, 18).frame(height: 54)
-        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color.white.opacity(0.12), lineWidth: 1)
+        )
         .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
@@ -1707,7 +2075,12 @@ struct AuthSecureField: View {
             .buttonStyle(.plain)
         }
         .padding(.horizontal, 18).frame(height: 54)
-        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color.white.opacity(0.12), lineWidth: 1)
+        )
         .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }

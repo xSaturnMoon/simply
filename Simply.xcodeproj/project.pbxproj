@@ -18,7 +18,33 @@
 		FBFBFB0000000000000000A1 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = FBFBFB0000000000000000B1 /* FirebaseAuth */; };
 		FBFBFB0000000000000000A2 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = FBFBFB0000000000000000B2 /* FirebaseFirestore */; };
 		FBFBFB0000000000000000A3 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = FBFBFB0000000000000000B3 /* FirebaseCore */; };
+		W800000000000000000000001 /* SimplyWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = W800000000000000000000011 /* SimplyWidgets.swift */; };
+		W800000000000000000000002 /* SimplyWidgets.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = W800000000000000000000010 /* SimplyWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		W800000000000000000000091 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = E80000000000000000000000 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = W800000000000000000000040;
+			remoteInfo = SimplyWidgets;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		W800000000000000000000090 /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				W800000000000000000000002 /* SimplyWidgets.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		E80000000000000000000010 /* Simply.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Simply.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -31,6 +57,9 @@
 		E80000000000000000000017 /* AppIconPurple.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = AppIconPurple.png; sourceTree = "<group>"; };
 		E80000000000000000000018 /* AppIconWhite.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = AppIconWhite.png; sourceTree = "<group>"; };
 		E80000000000000000000019 /* AppIconGray.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = AppIconGray.png; sourceTree = "<group>"; };
+		W800000000000000000000010 /* SimplyWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SimplyWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		W800000000000000000000011 /* SimplyWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimplyWidgets.swift; sourceTree = "<group>"; };
+		W800000000000000000000014 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -44,6 +73,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		W800000000000000000000020 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -51,6 +87,7 @@
 			isa = PBXGroup;
 			children = (
 				E80000000000000000000031 /* Simply */,
+				W800000000000000000000031 /* SimplyWidgets */,
 				E80000000000000000000032 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -75,8 +112,18 @@
 			isa = PBXGroup;
 			children = (
 				E80000000000000000000010 /* Simply.app */,
+				W800000000000000000000010 /* SimplyWidgets.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		W800000000000000000000031 /* SimplyWidgets */ = {
+			isa = PBXGroup;
+			children = (
+				W800000000000000000000011 /* SimplyWidgets.swift */,
+				W800000000000000000000014 /* Info.plist */,
+			);
+			path = SimplyWidgets;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -89,10 +136,12 @@
 				E80000000000000000000060 /* Sources */,
 				E80000000000000000000020 /* Frameworks */,
 				E80000000000000000000070 /* Resources */,
+				W800000000000000000000090 /* Embed App Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				W800000000000000000000092 /* PBXTargetDependency */,
 			);
 			name = Simply;
 			packageProductDependencies = (
@@ -104,6 +153,23 @@
 			productReference = E80000000000000000000010 /* Simply.app */;
 			productType = "com.apple.product-type.application";
 		};
+		W800000000000000000000040 /* SimplyWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = W800000000000000000000050 /* Build configuration list for PBXNativeTarget "SimplyWidgets" */;
+			buildPhases = (
+				W800000000000000000000060 /* Sources */,
+				W800000000000000000000020 /* Frameworks */,
+				W800000000000000000000070 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SimplyWidgets;
+			productName = SimplyWidgets;
+			productReference = W800000000000000000000010 /* SimplyWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -114,6 +180,9 @@
 				LastUpgradeCheck = 1500;
 				TargetAttributes = {
 					E80000000000000000000040 = {
+						CreatedOnToolsVersion = 15.0;
+					};
+					W800000000000000000000040 = {
 						CreatedOnToolsVersion = 15.0;
 					};
 				};
@@ -135,6 +204,7 @@
 			projectRoot = "";
 			targets = (
 				E80000000000000000000040 /* Simply */,
+				W800000000000000000000040 /* SimplyWidgets */,
 			);
 		};
 /* End PBXProject section */
@@ -152,6 +222,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		W800000000000000000000070 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -165,7 +242,23 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		W800000000000000000000060 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				W800000000000000000000001 /* SimplyWidgets.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		W800000000000000000000092 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = W800000000000000000000040 /* SimplyWidgets */;
+			targetProxy = W800000000000000000000091 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		E80000000000000000000051 /* Debug */ = {
@@ -177,7 +270,7 @@
 				CODE_SIGN_IDENTITY = "";
 				CODE_SIGNING_REQUIRED = NO;
 				CODE_SIGNING_ALLOWED = NO;
-				CURRENT_PROJECT_VERSION = 25;
+				CURRENT_PROJECT_VERSION = 26;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Simply/Info.plist;
@@ -186,7 +279,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.6.4;
+				MARKETING_VERSION = 0.6.5;
 				PRODUCT_BUNDLE_IDENTIFIER = com.saturnmoon.simply;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -204,7 +297,7 @@
 				CODE_SIGN_IDENTITY = "";
 				CODE_SIGNING_REQUIRED = NO;
 				CODE_SIGNING_ALLOWED = NO;
-				CURRENT_PROJECT_VERSION = 25;
+				CURRENT_PROJECT_VERSION = 26;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Simply/Info.plist;
@@ -213,7 +306,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.6.4;
+				MARKETING_VERSION = 0.6.5;
 				PRODUCT_BUNDLE_IDENTIFIER = com.saturnmoon.simply;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -286,6 +379,58 @@
 			};
 			name = Release;
 		};
+		W800000000000000000000051 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Manual;
+				CODE_SIGN_IDENTITY = "";
+				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGNING_ALLOWED = NO;
+				CURRENT_PROJECT_VERSION = 26;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = SimplyWidgets/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 0.6.5;
+				PRODUCT_BUNDLE_IDENTIFIER = com.saturnmoon.simply.SimplyWidgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		W800000000000000000000052 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Manual;
+				CODE_SIGN_IDENTITY = "";
+				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGNING_ALLOWED = NO;
+				CURRENT_PROJECT_VERSION = 26;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = SimplyWidgets/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 0.6.5;
+				PRODUCT_BUNDLE_IDENTIFIER = com.saturnmoon.simply.SimplyWidgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -303,6 +448,15 @@
 			buildConfigurations = (
 				E80000000000000000000081 /* Debug */,
 				E80000000000000000000082 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		W800000000000000000000050 /* Build configuration list for PBXNativeTarget "SimplyWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				W800000000000000000000051 /* Debug */,
+				W800000000000000000000052 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
