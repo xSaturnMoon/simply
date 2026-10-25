@@ -40,8 +40,17 @@ struct ReminderProvider: TimelineProvider {
     }
 
     func getSnapshot(in context: Context, completion: @escaping (ReminderEntry) -> Void) {
-        let entry = loadCurrentEntry()
-        completion(entry)
+        if context.isPreview {
+            completion(placeholder(in: context))
+        } else {
+            let entry = loadCurrentEntry()
+            if entry.reminders.isEmpty {
+                // Se non ci sono promemoria reali, mostra il placeholder nella galleria widget per un'anteprima chiara
+                completion(placeholder(in: context))
+            } else {
+                completion(entry)
+            }
+        }
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<ReminderEntry>) -> Void) {
@@ -239,6 +248,12 @@ extension View {
 // MARK: - Main Widget
 
 @main
+struct SimplyWidgetBundle: WidgetBundle {
+    var body: some Widget {
+        SimplyWidgets()
+    }
+}
+
 struct SimplyWidgets: Widget {
     let kind: String = "SimplyWidgets"
 

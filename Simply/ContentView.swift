@@ -217,21 +217,41 @@ struct MainAppView: View {
     @State private var selectedTab: Int = 0
 
     var body: some View {
-        TabView(selection: $selectedTab) {
-            Tab("Spesa", systemImage: "cart", value: 0) {
+        if #available(iOS 18.0, *) {
+            TabView(selection: $selectedTab) {
+                Tab("Spesa", systemImage: "cart", value: 0) {
+                    ShoppingListView()
+                }
+                Tab("Calendario", systemImage: "calendar", value: 1) {
+                    CalendarView()
+                }
+                Tab("Profilo", systemImage: "person.circle", value: 2) {
+                    ProfileView()
+                }
+            }
+            .tint(.blue)
+            .onOpenURL { url in
+                if url.scheme == "simply" && url.host == "calendar" {
+                    selectedTab = 1
+                }
+            }
+        } else {
+            TabView(selection: $selectedTab) {
                 ShoppingListView()
-            }
-            Tab("Calendario", systemImage: "calendar", value: 1) {
+                    .tabItem { Label("Spesa", systemImage: "cart") }
+                    .tag(0)
                 CalendarView()
-            }
-            Tab("Profilo", systemImage: "person.circle", value: 2) {
+                    .tabItem { Label("Calendario", systemImage: "calendar") }
+                    .tag(1)
                 ProfileView()
+                    .tabItem { Label("Profilo", systemImage: "person.circle") }
+                    .tag(2)
             }
-        }
-        .tint(.blue)
-        .onOpenURL { url in
-            if url.scheme == "simply" && url.host == "calendar" {
-                selectedTab = 1
+            .tint(.blue)
+            .onOpenURL { url in
+                if url.scheme == "simply" && url.host == "calendar" {
+                    selectedTab = 1
+                }
             }
         }
     }
@@ -1537,13 +1557,33 @@ struct AllRemindersView: View {
 struct ProfileView: View {
     @State private var auth = AuthManager.shared
     @State private var isCopied = false
-    private let bg = Color.black
+    @State private var showLogoutConfirm = false
+    @AppStorage("appTheme") private var appTheme: String = "system"
+    @AppStorage("timePickerMode") private var timePickerMode: String = "Apple"
+    private let bg = Color(uiColor: .systemBackground)
+
+    private var themeDisplayName: String {
+        switch appTheme {
+        case "light": return "Chiaro"
+        case "dark": return "Scuro"
+        default: return "Sistema"
+        }
+    }
+
+    private var iconDisplayName: String {
+        guard let name = UIApplication.shared.alternateIconName else { return "Originale" }
+        if name.contains("white") { return "Bianca" }
+        if name.contains("purple") { return "Viola" }
+        if name.contains("green") { return "Verde" }
+        if name.contains("orange") { return "Arancione" }
+        return "Originale"
+    }
 
     var body: some View {
         NavigationStack {
             ZStack {
                 bg.ignoresSafeArea()
-                VStack(spacing: 24) {
+                VStack(spacing: 20) {
                     Spacer()
 
                     // Logo
@@ -1554,7 +1594,9 @@ struct ProfileView: View {
                     // Username + codice
                     VStack(spacing: 8) {
                         Text(auth.username.isEmpty ? "" : "@\(auth.username)")
-                            .font(.title2.bold()).foregroundStyle(.white)
+                            .font(.title2.bold())
+                            .foregroundStyle(.primary)
+
                         if !auth.friendCode.isEmpty {
                             Button {
                                 UIPasteboard.general.string = auth.friendCode
@@ -1567,10 +1609,10 @@ struct ProfileView: View {
                                 HStack(spacing: 6) {
                                     Text("#\(auth.friendCode)")
                                         .font(.system(size: 15, weight: .bold, design: .monospaced))
-                                        .foregroundStyle(.white.opacity(0.85))
+                                        .foregroundStyle(.primary.opacity(0.85))
                                     Image(systemName: isCopied ? "checkmark" : "doc.on.doc")
                                         .font(.system(size: 12, weight: .semibold))
-                                        .foregroundStyle(isCopied ? .green : .white.opacity(0.5))
+                                        .foregroundStyle(isCopied ? .green : .primary.opacity(0.5))
                                     if isCopied {
                                         Text("Copiato!")
                                             .font(.caption2.bold())
@@ -1579,8 +1621,9 @@ struct ProfileView: View {
                                 }
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 6)
-                                .background(Color.white.opacity(0.08))
+                                .background(Color.primary.opacity(0.08))
                                 .clipShape(Capsule())
+                                .overlay(Capsule().stroke(Color.primary.opacity(0.12), lineWidth: 1))
                             }
                             .buttonStyle(.plain)
                             .contentShape(Capsule())
@@ -1589,38 +1632,82 @@ struct ProfileView: View {
 
                     Spacer()
 
-                    // Bottoni
-                    VStack(spacing: 12) {
-                        NavigationLink(destination: FriendsView()) {
-                            AuthPill(label: "Amici", style: .outlined)
-                        }
-                        .buttonStyle(.plain)
-                        .contentShape(Capsule())
+                    // Bottoni a rettangolo smussato conformi allo stile dell'app
+                    VStack(spacing: 10) {
+                        ProfileMenuButton(
+                            icon: "person.2.fill",
+                            iconColor: .blue,
+                            title: "Amici",
+                            value: auth.friends.isEmpty ? nil : "\(auth.friends.count)",
+                            destination: FriendsView()
+                        )
 
-                        NavigationLink(destination: IconPickerView()) {
-                            AuthPill(label: "Icona", style: .outlined)
-                        }
-                        .buttonStyle(.plain)
-                        .contentShape(Capsule())
+                        ProfileMenuButton(
+                            icon: "circle.lefthalf.filled",
+                            iconColor: .purple,
+                            title: "Tema",
+                            value: themeDisplayName,
+                            destination: ThemeSettingsView()
+                        )
 
-                        NavigationLink(destination: ClockSettingsView()) {
-                            AuthPill(label: "Orologio", style: .outlined)
-                        }
-                        .buttonStyle(.plain)
-                        .contentShape(Capsule())
+                        ProfileMenuButton(
+                            icon: "clock.fill",
+                            iconColor: .orange,
+                            title: "Orologio",
+                            value: timePickerMode,
+                            destination: ClockSettingsView()
+                        )
 
-                        Button { auth.logout() } label: {
-                            AuthPill(label: "Esci", style: .outlined)
+                        ProfileMenuButton(
+                            icon: "paintbrush.fill",
+                            iconColor: .pink,
+                            title: "Icona",
+                            value: iconDisplayName,
+                            destination: IconPickerView()
+                        )
+
+                        Button {
+                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                            showLogoutConfirm = true
+                        } label: {
+                            HStack(spacing: 14) {
+                                Image(systemName: "rectangle.portrait.and.arrow.right")
+                                    .font(.system(size: 17, weight: .semibold))
+                                    .foregroundStyle(.red)
+                                    .frame(width: 36, height: 36)
+                                    .background(Color.red.opacity(0.12))
+                                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+                                Text("Esci")
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundStyle(.red)
+
+                                Spacer()
+                            }
+                            .padding(.horizontal, 16)
+                            .frame(height: 56)
+                            .background(.ultraThinMaterial)
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .stroke(Color.red.opacity(0.2), lineWidth: 1)
+                            )
                         }
                         .buttonStyle(.plain)
-                        .contentShape(Capsule())
+                        .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     }
-                    .padding(.horizontal, 28)
+                    .padding(.horizontal, 24)
 
-                    Spacer().frame(height: 20)
+                    Spacer().frame(height: 16)
                 }
             }
             .toolbarVisibility(.hidden, for: .navigationBar)
+            .confirmationDialog("Vuoi davvero uscire dall'account?", isPresented: $showLogoutConfirm, titleVisibility: .visible) {
+                Button("Esci", role: .destructive) {
+                    auth.logout()
+                }
+                Button("Annulla", role: .cancel) {}
+            }
             .onAppear {
                 if let uid = auth.currentUser?.uid, auth.friendCode.isEmpty {
                     Task {
@@ -1629,6 +1716,63 @@ struct ProfileView: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Profile Menu Button
+
+struct ProfileMenuButton<Destination: View>: View {
+    let icon: String
+    let iconColor: Color
+    let title: String
+    let value: String?
+    let destination: Destination
+
+    init(icon: String, iconColor: Color = .blue, title: String, value: String? = nil, destination: Destination) {
+        self.icon = icon
+        self.iconColor = iconColor
+        self.title = title
+        self.value = value
+        self.destination = destination
+    }
+
+    var body: some View {
+        NavigationLink(destination: destination) {
+            HStack(spacing: 14) {
+                Image(systemName: icon)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(iconColor)
+                    .frame(width: 36, height: 36)
+                    .background(iconColor.opacity(0.12))
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+                Text(title)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(.primary)
+
+                Spacer()
+
+                if let value = value, !value.isEmpty {
+                    Text(value)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(.secondary)
+                }
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.horizontal, 16)
+            .frame(height: 56)
+            .background(.ultraThinMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(Color.primary.opacity(0.1), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
 
@@ -1641,7 +1785,7 @@ struct FriendsView: View {
     @State private var showAdd = false
     @FocusState private var codeFocused: Bool
     @Environment(\.dismiss) private var dismiss
-    private let bg = Color.black
+    private let bg = Color(uiColor: .systemBackground)
 
     var body: some View {
         ZStack {
@@ -1653,11 +1797,11 @@ struct FriendsView: View {
                     Button { dismiss() } label: {
                         Image(systemName: "chevron.left")
                             .font(.system(size: 17, weight: .semibold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(.primary)
                             .frame(width: 38, height: 38)
                             .background(.ultraThinMaterial)
                             .clipShape(Circle())
-                            .overlay(Circle().stroke(Color.white.opacity(0.12), lineWidth: 1))
+                            .overlay(Circle().stroke(Color.primary.opacity(0.12), lineWidth: 1))
                     }
                     .buttonStyle(.plain)
                     .contentShape(Circle())
@@ -1670,11 +1814,11 @@ struct FriendsView: View {
                     } label: {
                         Image(systemName: showAdd ? "xmark" : "person.badge.plus")
                             .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(.primary)
                             .frame(width: 38, height: 38)
                             .background(.ultraThinMaterial)
                             .clipShape(Circle())
-                            .overlay(Circle().stroke(Color.white.opacity(0.12), lineWidth: 1))
+                            .overlay(Circle().stroke(Color.primary.opacity(0.12), lineWidth: 1))
                     }
                     .buttonStyle(.plain)
                     .contentShape(Circle())
@@ -1683,7 +1827,7 @@ struct FriendsView: View {
                 .padding(.top, 20)
                 .padding(.bottom, 28)
 
-                Text("Amici").font(.title.bold()).foregroundStyle(.white)
+                Text("Amici").font(.title.bold()).foregroundStyle(.primary)
                     .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 24).padding(.bottom, 20)
 
                 // Form aggiungi amico
@@ -1725,11 +1869,11 @@ struct FriendsView: View {
                     Spacer()
                     VStack(spacing: 10) {
                         Image(systemName: "person.2").font(.system(size: 44, weight: .light))
-                            .foregroundStyle(.white.opacity(0.2))
+                            .foregroundStyle(.secondary.opacity(0.4))
                         Text("Nessun amico aggiunto").font(.system(size: 16))
-                            .foregroundStyle(.white.opacity(0.3))
+                            .foregroundStyle(.secondary)
                         Text("Tocca + per aggiungerne uno col suo codice").font(.system(size: 14))
-                            .foregroundStyle(.white.opacity(0.2))
+                            .foregroundStyle(.secondary.opacity(0.7))
                     }
                     Spacer()
                 } else {
@@ -1740,10 +1884,10 @@ struct FriendsView: View {
                                     VStack(alignment: .leading, spacing: 3) {
                                         Text(friend.nickname)
                                             .font(.system(size: 16, weight: .medium))
-                                            .foregroundStyle(.white)
+                                            .foregroundStyle(.primary)
                                         Text("#\(friend.friendCode)")
                                             .font(.system(size: 13, design: .monospaced))
-                                            .foregroundStyle(.white.opacity(0.4))
+                                            .foregroundStyle(.secondary)
                                     }
                                     Spacer()
                                     Button {
@@ -1763,7 +1907,7 @@ struct FriendsView: View {
                                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                        .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                                        .stroke(Color.primary.opacity(0.1), lineWidth: 1)
                                 )
                             }
                         }
@@ -1780,13 +1924,12 @@ struct FriendsView: View {
     }
 }
 
-// MARK: - Clock Settings View
+// MARK: - Theme Settings View
 
-struct ClockSettingsView: View {
+struct ThemeSettingsView: View {
     @Environment(\.dismiss) private var dismiss
-    @AppStorage("timePickerMode") private var timePickerMode: String = "Apple"
-    @State private var previewTime: Date = Date()
-    private let bg = Color.black
+    @AppStorage("appTheme") private var appTheme: String = "system"
+    private let bg = Color(uiColor: .systemBackground)
 
     var body: some View {
         ZStack {
@@ -1797,11 +1940,138 @@ struct ClockSettingsView: View {
                     Button { dismiss() } label: {
                         Image(systemName: "chevron.left")
                             .font(.system(size: 17, weight: .semibold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(.primary)
                             .frame(width: 38, height: 38)
                             .background(.ultraThinMaterial)
                             .clipShape(Circle())
-                            .overlay(Circle().stroke(Color.white.opacity(0.12), lineWidth: 1))
+                            .overlay(Circle().stroke(Color.primary.opacity(0.12), lineWidth: 1))
+                    }
+                    .buttonStyle(.plain)
+                    .contentShape(Circle())
+
+                    Spacer()
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 20)
+                .padding(.bottom, 28)
+
+                // Titolo & Descrizione
+                VStack(spacing: 6) {
+                    Text("Tema")
+                        .font(.title.bold())
+                        .foregroundStyle(.primary)
+                    Text("Scegli l'aspetto visivo di Simply")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.bottom, 36)
+
+                // Opzioni Tema
+                VStack(spacing: 16) {
+                    themeOptionCard(
+                        mode: "system",
+                        icon: "circle.lefthalf.filled",
+                        title: "Sistema",
+                        description: "Segue automaticamente le impostazioni del tuo iPhone"
+                    )
+
+                    themeOptionCard(
+                        mode: "light",
+                        icon: "sun.max.fill",
+                        title: "Chiaro",
+                        description: "Interfaccia luminosa con sfondi chiari e testi scuri"
+                    )
+
+                    themeOptionCard(
+                        mode: "dark",
+                        icon: "moon.fill",
+                        title: "Scuro",
+                        description: "Interfaccia scura ad alto contrasto (AMOLED black)"
+                    )
+                }
+                .padding(.horizontal, 24)
+
+                Spacer()
+            }
+        }
+        .navigationBarBackButtonHidden(true)
+        .toolbarVisibility(.hidden, for: .navigationBar)
+    }
+
+    @ViewBuilder
+    private func themeOptionCard(mode: String, icon: String, title: String, description: String) -> some View {
+        let isSelected = (appTheme == mode)
+
+        Button {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                appTheme = mode
+            }
+        } label: {
+            HStack(spacing: 16) {
+                Image(systemName: icon)
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(isSelected ? .purple : .primary.opacity(0.6))
+                    .frame(width: 44, height: 44)
+                    .background(isSelected ? Color.purple.opacity(0.15) : Color.primary.opacity(0.06))
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(.primary)
+                    Text(description)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundStyle(.purple)
+                } else {
+                    Circle()
+                        .stroke(Color.primary.opacity(0.2), lineWidth: 1.5)
+                        .frame(width: 20, height: 20)
+                }
+            }
+            .padding(16)
+            .background(.ultraThinMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(isSelected ? Color.purple.opacity(0.6) : Color.primary.opacity(0.1), lineWidth: isSelected ? 1.5 : 1)
+            )
+            .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Clock Settings View
+
+struct ClockSettingsView: View {
+    @Environment(\.dismiss) private var dismiss
+    @AppStorage("timePickerMode") private var timePickerMode: String = "Apple"
+    @State private var previewTime: Date = Date()
+    private let bg = Color(uiColor: .systemBackground)
+
+    var body: some View {
+        ZStack {
+            bg.ignoresSafeArea()
+            VStack(spacing: 0) {
+                // Header con Back
+                HStack {
+                    Button { dismiss() } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(.primary)
+                            .frame(width: 38, height: 38)
+                            .background(.ultraThinMaterial)
+                            .clipShape(Circle())
+                            .overlay(Circle().stroke(Color.primary.opacity(0.12), lineWidth: 1))
                     }
                     .buttonStyle(.plain)
                     .contentShape(Circle())
@@ -1816,10 +2086,10 @@ struct ClockSettingsView: View {
                 VStack(spacing: 6) {
                     Text("Orologio")
                         .font(.title.bold())
-                        .foregroundStyle(.white)
+                        .foregroundStyle(.primary)
                     Text("Scegli come inserire l'orario negli impegni")
                         .font(.subheadline)
-                        .foregroundStyle(.white.opacity(0.45))
+                        .foregroundStyle(.secondary)
                 }
                 .padding(.bottom, 36)
 
@@ -1846,7 +2116,7 @@ struct ClockSettingsView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("ANTEPRIMA")
                         .font(.caption.bold())
-                        .foregroundStyle(.white.opacity(0.4))
+                        .foregroundStyle(.secondary)
                         .padding(.horizontal, 28)
 
                     VStack(spacing: 14) {
@@ -1854,7 +2124,7 @@ struct ClockSettingsView: View {
 
                         Text(timePickerMode == "Apple" ? "Gira la ruota per selezionare l'orario" : "Tocca le caselle per digitare l'orario con la tastiera")
                             .font(.caption)
-                            .foregroundStyle(.white.opacity(0.5))
+                            .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
                     }
                     .padding(18)
@@ -1863,7 +2133,7 @@ struct ClockSettingsView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                     .overlay(
                         RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                            .stroke(Color.primary.opacity(0.1), lineWidth: 1)
                     )
                     .padding(.horizontal, 24)
                 }
@@ -1888,18 +2158,18 @@ struct ClockSettingsView: View {
             HStack(spacing: 16) {
                 Image(systemName: icon)
                     .font(.system(size: 22, weight: .semibold))
-                    .foregroundStyle(isSelected ? .blue : .white.opacity(0.6))
+                    .foregroundStyle(isSelected ? .blue : .primary.opacity(0.6))
                     .frame(width: 44, height: 44)
-                    .background(Color.white.opacity(isSelected ? 0.12 : 0.05))
+                    .background(isSelected ? Color.blue.opacity(0.15) : Color.primary.opacity(0.06))
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(title)
                         .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(.primary)
                     Text(description)
                         .font(.caption)
-                        .foregroundStyle(.white.opacity(0.45))
+                        .foregroundStyle(.secondary)
                 }
 
                 Spacer()
@@ -1910,7 +2180,7 @@ struct ClockSettingsView: View {
                         .foregroundStyle(.blue)
                 } else {
                     Circle()
-                        .stroke(Color.white.opacity(0.2), lineWidth: 1.5)
+                        .stroke(Color.primary.opacity(0.2), lineWidth: 1.5)
                         .frame(width: 20, height: 20)
                 }
             }
@@ -1919,7 +2189,7 @@ struct ClockSettingsView: View {
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(isSelected ? Color.blue.opacity(0.6) : Color.white.opacity(0.1), lineWidth: isSelected ? 1.5 : 1)
+                    .stroke(isSelected ? Color.blue.opacity(0.6) : Color.primary.opacity(0.1), lineWidth: isSelected ? 1.5 : 1)
             )
             .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
@@ -1938,7 +2208,7 @@ struct AppIconOption: Identifiable {
 struct IconPickerView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var currentIcon: String? = UIApplication.shared.alternateIconName
-    private let bg = Color.black
+    private let bg = Color(uiColor: .systemBackground)
     private let icons: [AppIconOption] = [
         AppIconOption(id: "default",       assetName: "simply_black",  label: "Originale"),
         AppIconOption(id: "simply_white",  assetName: "simply_white",  label: "Bianca"),
@@ -1968,11 +2238,11 @@ struct IconPickerView: View {
                     Button { dismiss() } label: {
                         Image(systemName: "chevron.left")
                             .font(.system(size: 17, weight: .semibold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(.primary)
                             .frame(width: 38, height: 38)
                             .background(.ultraThinMaterial)
                             .clipShape(Circle())
-                            .overlay(Circle().stroke(Color.white.opacity(0.12), lineWidth: 1))
+                            .overlay(Circle().stroke(Color.primary.opacity(0.12), lineWidth: 1))
                     }
                     .buttonStyle(.plain)
                     .contentShape(Circle())
@@ -1985,10 +2255,10 @@ struct IconPickerView: View {
                 VStack(spacing: 6) {
                     Text("Icona App")
                         .font(.title.bold())
-                        .foregroundStyle(.white)
+                        .foregroundStyle(.primary)
                     Text("Scegli lo stile che preferisci")
                         .font(.subheadline)
-                        .foregroundStyle(.white.opacity(0.45))
+                        .foregroundStyle(.secondary)
                 }
                 .padding(.bottom, 36)
 
@@ -2044,14 +2314,14 @@ struct IconOptionCell: View {
                     .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                     .overlay(
                         RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .stroke(isSelected ? Color.blue : Color.white.opacity(0.12), lineWidth: isSelected ? 3 : 1)
+                            .stroke(isSelected ? Color.blue : Color.primary.opacity(0.12), lineWidth: isSelected ? 3 : 1)
                     )
-                    .shadow(color: .black.opacity(0.4), radius: 8, y: 4)
+                    .shadow(color: .black.opacity(0.2), radius: 8, y: 4)
 
                 HStack(spacing: 6) {
                     Text(option.label)
                         .font(.system(size: 14, weight: isSelected ? .bold : .medium))
-                        .foregroundStyle(isSelected ? .white : .white.opacity(0.65))
+                        .foregroundStyle(isSelected ? Color.blue : Color.primary.opacity(0.75))
 
                     if isSelected {
                         Image(systemName: "checkmark.circle.fill")
@@ -2066,7 +2336,7 @@ struct IconOptionCell: View {
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .stroke(isSelected ? Color.blue.opacity(0.5) : Color.white.opacity(0.08), lineWidth: 1)
+                    .stroke(isSelected ? Color.blue.opacity(0.5) : Color.primary.opacity(0.08), lineWidth: 1)
             )
             .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         }

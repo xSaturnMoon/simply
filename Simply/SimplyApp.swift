@@ -16,13 +16,24 @@ extension UINavigationController: @retroactive UIGestureRecognizerDelegate {
 
 @main
 struct SimplyApp: App {
+    @AppStorage("appTheme") private var appTheme: String = "system"
+
     init() {
         FirebaseApp.configure()
+    }
+
+    private var preferredColorScheme: ColorScheme? {
+        switch appTheme {
+        case "light": return .light
+        case "dark": return .dark
+        default: return nil // sistema
+        }
     }
 
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .preferredColorScheme(preferredColorScheme)
         }
     }
 }
