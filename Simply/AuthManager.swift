@@ -108,8 +108,7 @@ class AuthManager {
 
     private init() {
         let settings = Firestore.firestore().settings
-        settings.isPersistenceEnabled = true
-        settings.cacheSizeBytes = FirestoreCacheSizeUnlimited
+        settings.cacheSettings = PersistentCacheSettings(sizeBytes: NSNumber(value: FirestoreCacheSizeUnlimited))
         Firestore.firestore().settings = settings
 
         requestNotificationPermission()
@@ -132,7 +131,7 @@ class AuthManager {
                 cleanOrphanNotifications()
             }
         }
-        Auth.auth().addStateDidChangeListener { [weak self] _, user in
+        _ = Auth.auth().addStateDidChangeListener { [weak self] _, user in
             Task { @MainActor in
                 self?.currentUser = user
                 if let user = user {

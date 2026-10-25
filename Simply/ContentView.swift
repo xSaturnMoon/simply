@@ -1,5 +1,18 @@
 import SwiftUI
 
+// MARK: - Navigation Helpers (iOS 17 & 18+)
+
+extension View {
+    @ViewBuilder
+    func hideNavigationBar() -> some View {
+        if #available(iOS 18.0, *) {
+            self.toolbarVisibility(.hidden, for: .navigationBar)
+        } else {
+            self.toolbar(.hidden, for: .navigationBar)
+        }
+    }
+}
+
 // MARK: - Root
 
 struct ContentView: View {
@@ -12,7 +25,7 @@ struct ContentView: View {
             } else {
                 NavigationStack {
                     LandingView()
-                        .toolbarVisibility(.hidden, for: .navigationBar)
+                        .hideNavigationBar()
                 }
             }
         }
@@ -144,7 +157,7 @@ struct RegisterView: View {
             .padding(.horizontal, 28).padding(.top, 20)
         }
         .navigationBarBackButtonHidden(true)
-        .toolbarVisibility(.hidden, for: .navigationBar)
+        .hideNavigationBar()
         .animation(.easeInOut(duration: 0.2), value: auth.errorMessage)
     }
 }
@@ -206,7 +219,7 @@ struct LoginView: View {
             .padding(.horizontal, 28).padding(.top, 20)
         }
         .navigationBarBackButtonHidden(true)
-        .toolbarVisibility(.hidden, for: .navigationBar)
+        .hideNavigationBar()
         .animation(.easeInOut(duration: 0.2), value: auth.errorMessage)
     }
 }
@@ -1701,7 +1714,7 @@ struct ProfileView: View {
                     Spacer().frame(height: 16)
                 }
             }
-            .toolbarVisibility(.hidden, for: .navigationBar)
+            .hideNavigationBar()
             .confirmationDialog("Vuoi davvero uscire dall'account?", isPresented: $showLogoutConfirm, titleVisibility: .visible) {
                 Button("Esci", role: .destructive) {
                     auth.logout()
@@ -1917,7 +1930,7 @@ struct FriendsView: View {
             }
         }
         .navigationBarBackButtonHidden(true)
-        .toolbarVisibility(.hidden, for: .navigationBar)
+        .hideNavigationBar()
         .animation(.easeInOut(duration: 0.2), value: showAdd)
         .animation(.easeInOut(duration: 0.2), value: auth.errorMessage)
         .onAppear { auth.errorMessage = nil }
@@ -1995,7 +2008,7 @@ struct ThemeSettingsView: View {
             }
         }
         .navigationBarBackButtonHidden(true)
-        .toolbarVisibility(.hidden, for: .navigationBar)
+        .hideNavigationBar()
     }
 
     @ViewBuilder
@@ -2142,7 +2155,7 @@ struct ClockSettingsView: View {
             }
         }
         .navigationBarBackButtonHidden(true)
-        .toolbarVisibility(.hidden, for: .navigationBar)
+        .hideNavigationBar()
     }
 
     @ViewBuilder
@@ -2276,7 +2289,7 @@ struct IconPickerView: View {
             }
         }
         .navigationBarBackButtonHidden(true)
-        .toolbarVisibility(.hidden, for: .navigationBar)
+        .hideNavigationBar()
     }
 
     private func applyIcon(_ option: AppIconOption) {
