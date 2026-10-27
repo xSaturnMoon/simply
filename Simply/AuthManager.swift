@@ -324,17 +324,27 @@ class AuthManager {
         }
     }
 
-    // Pulizia notifiche fantasma/orfane (eseguita SOLO quando gli impegni sono stati caricati per non cancellare i promemoria!)
+    // Pulizia notifiche fantasma/orfane e sincronizzazione notifiche su nuovo dispositivo/login
     func cleanOrphanNotifications() {
         guard hasLoadedCalendarEvents else { return }
         UNUserNotificationCenter.current().getPendingNotificationRequests { [weak self] requests in
             guard let self else { return }
             Task { @MainActor in
-                let activeIds = Set(self.calendarEvents.filter { $0.reminderEnabled && !$0.isCompleted }.map { $0.id })
+                let activeEvents = self.calendarEvents.filter { $0.reminderEnabled && !$0.isCompleted }
+                let activeIds = Set(activeEvents.map { $0.id })
+                let scheduledIds = Set(requests.map { $0.identifier })
+
                 let orphanIds = requests.map { $0.identifier }.filter { !activeIds.contains($0) }
                 if !orphanIds.isEmpty {
                     UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: orphanIds)
                     UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: orphanIds)
+                }
+
+                // Sincronizza su questo dispositivo le notifiche attive mancanti (es. dopo login o cambio account)
+                for event in activeEvents {
+                    if !scheduledIds.contains(event.id) {
+                        self.scheduleNotification(for: event)
+                    }
                 }
             }
         }
@@ -416,6 +426,8 @@ class AuthManager {
 
     func logout() {
         clearAll()
+        UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
+        updateWidgetReminders([])
         try? Auth.auth().signOut()
         currentUser = nil
     }
