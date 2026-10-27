@@ -306,39 +306,43 @@ struct ShoppingListView: View {
                         Section {
                             VStack(spacing: 8) {
                                 ForEach(auth.friends) { friend in
-                                    NavigationLink(destination: FriendDetailView(friend: friend)) {
-                                        HStack(spacing: 14) {
+                                    ZStack {
+                                        NavigationLink(destination: FriendDetailView(friend: friend)) {
+                                            EmptyView()
+                                        }
+                                        .opacity(0)
+
+                                        HStack(spacing: 12) {
                                             ZStack {
                                                 Circle()
                                                     .fill(Color.blue.opacity(0.15))
-                                                    .frame(width: 38, height: 38)
+                                                    .frame(width: 30, height: 30)
                                                 Image(systemName: "person.2.fill")
-                                                    .font(.system(size: 15, weight: .semibold))
+                                                    .font(.system(size: 13, weight: .semibold))
                                                     .foregroundColor(.blue)
                                             }
 
                                             Text(friend.nickname)
-                                                .font(.system(size: 16, weight: .medium))
+                                                .font(.system(size: 15, weight: .semibold))
                                                 .foregroundStyle(.primary)
 
                                             Spacer()
 
                                             Image(systemName: "chevron.right")
-                                                .font(.system(size: 13, weight: .semibold))
+                                                .font(.system(size: 12, weight: .semibold))
                                                 .foregroundStyle(.secondary.opacity(0.6))
                                         }
-                                        .padding(.horizontal, 16)
-                                        .padding(.vertical, 12)
+                                        .padding(.horizontal, 14)
+                                        .padding(.vertical, 8)
                                         .frame(maxWidth: .infinity)
                                         .background(.ultraThinMaterial)
-                                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                                         .overlay(
-                                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                            RoundedRectangle(cornerRadius: 16, style: .continuous)
                                                 .stroke(Color.primary.opacity(0.08), lineWidth: 1)
                                         )
-                                        .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                                        .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                                     }
-                                    .buttonStyle(.plain)
                                 }
                             }
                             .listRowInsets(EdgeInsets(top: 4, leading: 20, bottom: 8, trailing: 20))
