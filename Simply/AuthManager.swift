@@ -270,15 +270,15 @@ class AuthManager {
 
         let widgetItems = events
             .filter { !$0.isCompleted }
-            .sorted { $0.date < $1.date }
-            .prefix(15)
+            .sorted { $0.startTime < $1.startTime }
+            .prefix(50)
             .map { ev in
                 WidgetReminderItem(
                     id: ev.id,
                     title: ev.title,
                     timeString: formatter.string(from: ev.startTime),
                     isCompleted: ev.isCompleted,
-                    date: ev.date
+                    date: ev.startTime
                 )
             }
 

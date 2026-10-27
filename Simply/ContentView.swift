@@ -301,60 +301,47 @@ struct ShoppingListView: View {
                     .ignoresSafeArea()
 
                 List {
-                    // Barra amici: appare solo se hai amici aggiunti
+                    // Sezione Amici: appare solo se hai amici aggiunti
                     if !auth.friends.isEmpty {
                         Section {
-                            VStack(alignment: .leading, spacing: 10) {
-                                Text("LISTA AMICI")
-                                    .font(.caption.bold())
-                                    .foregroundStyle(.secondary)
-                                    .padding(.leading, 4)
-
-                                ScrollView(.horizontal, showsIndicators: false) {
-                                    HStack(spacing: 10) {
-                                        ForEach(auth.friends) { friend in
-                                            NavigationLink(destination: FriendDetailView(friend: friend)) {
-                                                HStack(spacing: 10) {
-                                                    ZStack {
-                                                        Circle()
-                                                            .fill(Color.blue.opacity(0.15))
-                                                            .frame(width: 34, height: 34)
-                                                        Image(systemName: "person.2.fill")
-                                                            .font(.system(size: 15))
-                                                            .foregroundColor(.blue)
-                                                    }
-
-                                                    VStack(alignment: .leading, spacing: 2) {
-                                                        Text(friend.nickname)
-                                                            .font(.system(size: 15, weight: .semibold))
-                                                            .foregroundStyle(.primary)
-                                                        Text("Vedi spesa")
-                                                            .font(.caption2)
-                                                            .foregroundStyle(.secondary)
-                                                    }
-
-                                                    Image(systemName: "chevron.right")
-                                                        .font(.system(size: 12, weight: .semibold))
-                                                        .foregroundStyle(.secondary)
-                                                        .padding(.leading, 2)
-                                                }
-                                                .padding(.horizontal, 14)
-                                                .padding(.vertical, 10)
-                                                .background(.ultraThinMaterial)
-                                                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                                                .overlay(
-                                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                                        .stroke(Color.white.opacity(0.1), lineWidth: 1)
-                                                )
-                                                .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            VStack(spacing: 8) {
+                                ForEach(auth.friends) { friend in
+                                    NavigationLink(destination: FriendDetailView(friend: friend)) {
+                                        HStack(spacing: 14) {
+                                            ZStack {
+                                                Circle()
+                                                    .fill(Color.blue.opacity(0.15))
+                                                    .frame(width: 38, height: 38)
+                                                Image(systemName: "person.2.fill")
+                                                    .font(.system(size: 15, weight: .semibold))
+                                                    .foregroundColor(.blue)
                                             }
-                                            .buttonStyle(.plain)
+
+                                            Text(friend.nickname)
+                                                .font(.system(size: 16, weight: .medium))
+                                                .foregroundStyle(.primary)
+
+                                            Spacer()
+
+                                            Image(systemName: "chevron.right")
+                                                .font(.system(size: 13, weight: .semibold))
+                                                .foregroundStyle(.secondary.opacity(0.6))
                                         }
+                                        .padding(.horizontal, 16)
+                                        .padding(.vertical, 12)
+                                        .frame(maxWidth: .infinity)
+                                        .background(.ultraThinMaterial)
+                                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+                                        )
+                                        .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                                     }
-                                    .padding(.vertical, 2)
+                                    .buttonStyle(.plain)
                                 }
                             }
-                            .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 8, trailing: 20))
+                            .listRowInsets(EdgeInsets(top: 4, leading: 20, bottom: 8, trailing: 20))
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
                         }
