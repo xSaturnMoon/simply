@@ -1,5 +1,6 @@
 import WidgetKit
 import SwiftUI
+import UIKit
 
 // MARK: - Modello Promemoria Widget
 
@@ -61,20 +62,36 @@ struct ReminderEntry: TimelineEntry {
     let date: Date
     let reminders: [WidgetReminderItem]
 
+    /// Tutti gli impegni non completati di oggi
     var todayReminders: [WidgetReminderItem] {
         let cal = Calendar.current
         return reminders.filter { cal.isDateInToday($0.date) }
             .sorted { $0.date < $1.date }
     }
 
-    var upcomingReminders: [WidgetReminderItem] {
+    /// Impegni di oggi ancora attivi o in arrivo (considera visibile un evento fino a 30 min dopo il suo orario)
+    var upcomingTodayReminders: [WidgetReminderItem] {
         let cal = Calendar.current
-        return reminders.filter { !cal.isDateInToday($0.date) && $0.date >= Date() }
+        let threshold = date.addingTimeInterval(-30 * 60)
+        return reminders.filter { cal.isDateInToday($0.date) && $0.date >= threshold }
             .sorted { $0.date < $1.date }
     }
 
+    /// Il prossimo impegno attivo da mostrare
+    var currentOrNextToday: WidgetReminderItem? {
+        upcomingTodayReminders.first
+    }
+
+    /// Impegni futuri dei giorni successivi a oggi
+    var upcomingReminders: [WidgetReminderItem] {
+        let cal = Calendar.current
+        return reminders.filter { !cal.isDateInToday($0.date) && $0.date >= date }
+            .sorted { $0.date < $1.date }
+    }
+
+    /// Il prossimo impegno in assoluto (di oggi o futuro)
     var nextUpcoming: WidgetReminderItem? {
-        todayReminders.first(where: { $0.date >= Date() }) ?? todayReminders.first ?? upcomingReminders.first
+        currentOrNextToday ?? upcomingReminders.first
     }
 }
 
@@ -100,7 +117,7 @@ struct ReminderProvider: TimelineProvider {
         if context.isPreview {
             completion(placeholder(in: context))
         } else {
-            let entry = loadCurrentEntry()
+            let entry = ReminderEntry(date: Date(), reminders: loadCurrentItems())
             if entry.reminders.isEmpty {
                 completion(placeholder(in: context))
             } else {
@@ -110,19 +127,36 @@ struct ReminderProvider: TimelineProvider {
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<ReminderEntry>) -> Void) {
-        let entry = loadCurrentEntry()
         let now = Date()
         let cal = Calendar.current
+        let allItems = loadCurrentItems()
 
-        // Ricarica programmata: alla mezzanotte (cambio giorno) oppure ogni 15 minuti
-        let midnight = cal.date(byAdding: .day, value: 1, to: cal.startOfDay(for: now)) ?? now.addingTimeInterval(3600)
-        let refreshDate = min(midnight, now.addingTimeInterval(15 * 60))
+        var entries: [ReminderEntry] = []
 
-        let timeline = Timeline(entries: [entry], policy: .after(refreshDate))
+        // Entry immediata attuale
+        entries.append(ReminderEntry(date: now, reminders: allItems))
+
+        // Genera timeline entries per ogni transizione di orario degli eventi di oggi
+        let todayItems = allItems.filter { cal.isDateInToday($0.date) }
+        for item in todayItems {
+            let transitionTime = item.date.addingTimeInterval(30 * 60)
+            if transitionTime > now {
+                entries.append(ReminderEntry(date: transitionTime, reminders: allItems))
+            }
+        }
+
+        // Genera entry per la mezzanotte di oggi (scatto su nuovo giorno)
+        if let midnight = cal.date(byAdding: .day, value: 1, to: cal.startOfDay(for: now)) {
+            entries.append(ReminderEntry(date: midnight, reminders: allItems))
+        }
+
+        // Policy di aggiornamento: dopo l'ultima entry o comunque ogni 20 minuti
+        let nextUpdate = now.addingTimeInterval(20 * 60)
+        let timeline = Timeline(entries: entries, policy: .after(nextUpdate))
         completion(timeline)
     }
 
-    private func loadCurrentEntry() -> ReminderEntry {
+    private func loadCurrentItems() -> [WidgetReminderItem] {
         var items: [WidgetReminderItem] = []
 
         if let groupDefaults = UserDefaults(suiteName: "group.com.saturnmoon.simply"),
@@ -134,8 +168,7 @@ struct ReminderProvider: TimelineProvider {
             items = decoded
         }
 
-        let filtered = items.filter { !$0.isCompleted }
-        return ReminderEntry(date: Date(), reminders: filtered)
+        return items.filter { !$0.isCompleted }
     }
 }
 
@@ -162,7 +195,7 @@ struct SimplyWidgetEntryView: View {
                 MediumReminderWidgetView(entry: entry)
             }
         }
-        .widgetBackground(Color(uiColor: .systemBackground))
+        .applyWidgetBackground(for: family)
     }
 }
 
@@ -196,8 +229,8 @@ struct SmallReminderWidgetView: View {
                 }
                 Spacer()
 
-                if !entry.todayReminders.isEmpty {
-                    Text("\(entry.todayReminders.count)")
+                if !entry.upcomingTodayReminders.isEmpty {
+                    Text("\(entry.upcomingTodayReminders.count)")
                         .font(.system(size: 11, weight: .bold))
                         .foregroundStyle(.white)
                         .frame(width: 20, height: 20)
@@ -208,7 +241,7 @@ struct SmallReminderWidgetView: View {
 
             Spacer()
 
-            if let current = entry.todayReminders.first {
+            if let current = entry.currentOrNextToday {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(current.timeString)
                         .font(.system(size: 18, weight: .heavy, design: .rounded))
@@ -219,10 +252,30 @@ struct SmallReminderWidgetView: View {
                         .foregroundStyle(.primary)
                         .lineLimit(2)
 
-                    if entry.todayReminders.count > 1 {
-                        Text("+\(entry.todayReminders.count - 1) altri oggi")
+                    if entry.upcomingTodayReminders.count > 1 {
+                        Text("+\(entry.upcomingTodayReminders.count - 1) altri oggi")
                             .font(.system(size: 10, weight: .medium))
                             .foregroundStyle(.secondary)
+                    }
+                }
+            } else if !entry.todayReminders.isEmpty {
+                // Tutti gli impegni di oggi sono già passati
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 13))
+                            .foregroundStyle(.green)
+                        Text("Completati per oggi")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(.primary)
+                    }
+
+                    if let next = entry.upcomingReminders.first {
+                        Text("Prossimo: \(DateHelper.relativeDayString(for: next.date)) \(next.timeString)")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(.blue)
+                            .lineLimit(1)
+                            .padding(.top, 1)
                     }
                 }
             } else if let next = entry.upcomingReminders.first {
@@ -282,8 +335,8 @@ struct MediumReminderWidgetView: View {
 
                 Spacer()
 
-                if !entry.todayReminders.isEmpty {
-                    Text("\(entry.todayReminders.count) OGGI")
+                if !entry.upcomingTodayReminders.isEmpty {
+                    Text("\(entry.upcomingTodayReminders.count) OGGI")
                         .font(.system(size: 10, weight: .bold))
                         .foregroundStyle(.secondary)
                 }
@@ -292,9 +345,9 @@ struct MediumReminderWidgetView: View {
             Divider()
                 .overlay(Color.primary.opacity(0.08))
 
-            if !entry.todayReminders.isEmpty {
+            if !entry.upcomingTodayReminders.isEmpty {
                 VStack(alignment: .leading, spacing: 5) {
-                    ForEach(entry.todayReminders.prefix(3)) { item in
+                    ForEach(entry.upcomingTodayReminders.prefix(3)) { item in
                         HStack(spacing: 8) {
                             Text(item.timeString)
                                 .font(.system(size: 12, weight: .bold, design: .rounded))
@@ -322,7 +375,7 @@ struct MediumReminderWidgetView: View {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.system(size: 14))
                             .foregroundStyle(.green)
-                        Text("Nessun impegno oggi")
+                        Text(entry.todayReminders.isEmpty ? "Nessun impegno oggi" : "Tutti gli impegni di oggi terminati")
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(.primary)
                     }
@@ -400,12 +453,12 @@ struct LargeReminderWidgetView: View {
 
                 Spacer()
 
-                if !entry.todayReminders.isEmpty {
+                if !entry.upcomingTodayReminders.isEmpty {
                     VStack(alignment: .trailing, spacing: 2) {
-                        Text("\(entry.todayReminders.count)")
+                        Text("\(entry.upcomingTodayReminders.count)")
                             .font(.system(size: 18, weight: .bold, design: .rounded))
                             .foregroundStyle(.blue)
-                        Text("impegni oggi")
+                        Text("da fare oggi")
                             .font(.system(size: 10, weight: .medium))
                             .foregroundStyle(.secondary)
                     }
@@ -437,21 +490,23 @@ struct LargeReminderWidgetView: View {
                     .padding(.vertical, 4)
                 } else {
                     ForEach(entry.todayReminders.prefix(4)) { item in
+                        let isPast = item.date < entry.date.addingTimeInterval(-30 * 60)
                         HStack(spacing: 10) {
                             Text(item.timeString)
                                 .font(.system(size: 12, weight: .bold, design: .rounded))
-                                .foregroundStyle(.blue)
+                                .foregroundStyle(isPast ? Color.secondary : Color.blue)
                                 .frame(width: 44, alignment: .leading)
 
                             Text(item.title)
                                 .font(.system(size: 13, weight: .medium))
-                                .foregroundStyle(.primary)
+                                .foregroundStyle(isPast ? Color.secondary : Color.primary)
+                                .strikethrough(isPast)
                                 .lineLimit(1)
 
                             Spacer()
 
                             Circle()
-                                .stroke(Color.primary.opacity(0.2), lineWidth: 1.5)
+                                .stroke(Color.primary.opacity(isPast ? 0.1 : 0.25), lineWidth: 1.5)
                                 .frame(width: 14, height: 14)
                         }
                         .padding(.vertical, 3)
@@ -517,8 +572,8 @@ struct AccessoryRectangularWidgetView: View {
                     .font(.system(size: 13, weight: .semibold))
                     .lineLimit(1)
 
-                if entry.todayReminders.count > 1 {
-                    Text("+\(entry.todayReminders.count - 1) altri oggi")
+                if entry.upcomingTodayReminders.count > 1 {
+                    Text("+\(entry.upcomingTodayReminders.count - 1) altri oggi")
                         .font(.system(size: 9))
                         .foregroundStyle(.secondary)
                 }
@@ -549,11 +604,17 @@ struct AccessoryInlineWidgetView: View {
 // MARK: - Helper Background Dinamico (Chiaro e Scuro)
 
 extension View {
-    func widgetBackground(_ color: Color = Color(uiColor: .systemBackground)) -> some View {
+    @ViewBuilder
+    func applyWidgetBackground(for family: WidgetFamily) -> some View {
         if #available(iOSApplicationExtension 17.0, *) {
-            return AnyView(self.containerBackground(color, for: .widget))
+            switch family {
+            case .accessoryRectangular, .accessoryInline:
+                self.containerBackground(.clear, for: .widget)
+            default:
+                self.containerBackground(Color(uiColor: .systemBackground), for: .widget)
+            }
         } else {
-            return AnyView(self.background(color))
+            self.background(Color(uiColor: .systemBackground))
         }
     }
 }
@@ -570,29 +631,20 @@ struct SimplyWidgetBundle: WidgetBundle {
 struct SimplyWidgets: Widget {
     let kind: String = "SimplyWidgets"
 
-    private var supportedFamiliesList: [WidgetFamily] {
-        var families: [WidgetFamily] = [
-            .systemSmall,
-            .systemMedium,
-            .systemLarge,
-            .accessoryRectangular,
-            .accessoryInline
-        ]
-        #if !os(watchOS)
-        if #available(iOSApplicationExtension 17.0, *) {
-            families.append(.systemExtraLarge)
-        }
-        #endif
-        return families
-    }
-
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: ReminderProvider()) { entry in
             SimplyWidgetEntryView(entry: entry)
         }
         .configurationDisplayName("Simply Promemoria")
         .description("Visualizza gli impegni di oggi e i prossimi promemoria.")
-        .supportedFamilies(supportedFamiliesList)
+        .supportedFamilies([
+            .systemSmall,
+            .systemMedium,
+            .systemLarge,
+            .systemExtraLarge,
+            .accessoryRectangular,
+            .accessoryInline
+        ])
         .contentMarginsDisabled()
     }
 }

@@ -395,7 +395,7 @@ struct ShoppingListView: View {
                                                 .clipShape(RoundedRectangle(cornerRadius: 12))
                                                 .overlay(
                                                     RoundedRectangle(cornerRadius: 12)
-                                                        .stroke(selectedQty == preset ? Color.blue.opacity(0.8) : Color.white.opacity(0.12), lineWidth: 1)
+                                                        .stroke(selectedQty == preset ? Color.blue.opacity(0.8) : Color.primary.opacity(0.1), lineWidth: 1)
                                                 )
                                                 .contentShape(RoundedRectangle(cornerRadius: 12))
                                             }
@@ -430,7 +430,7 @@ struct ShoppingListView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 18))
                         .overlay(
                             RoundedRectangle(cornerRadius: 18)
-                                .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
                         )
                         .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 12, trailing: 20))
                         .listRowBackground(Color.clear)
@@ -580,7 +580,7 @@ struct ShoppingItemCard: View {
             .clipShape(RoundedRectangle(cornerRadius: 18))
             .overlay(
                 RoundedRectangle(cornerRadius: 18)
-                    .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                    .stroke(Color.primary.opacity(0.08), lineWidth: 1)
             )
             .contentShape(RoundedRectangle(cornerRadius: 18))
         }
@@ -746,7 +746,7 @@ struct CalendarView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 18))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 18)
-                                    .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                                    .stroke(Color.primary.opacity(0.08), lineWidth: 1)
                             )
 
                             CalendarMonthGrid(
@@ -842,7 +842,7 @@ struct CalendarView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 18))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 18)
-                                    .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                                    .stroke(Color.primary.opacity(0.08), lineWidth: 1)
                             )
                             .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
                             .listRowBackground(Color.clear)
@@ -1080,7 +1080,7 @@ struct AppleEventCard: View {
             .clipShape(RoundedRectangle(cornerRadius: 16))
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
-                    .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                    .stroke(Color.primary.opacity(0.08), lineWidth: 1)
             )
             .contentShape(RoundedRectangle(cornerRadius: 16))
         }
